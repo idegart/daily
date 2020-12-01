@@ -1,0 +1,29 @@
+version: "3"
+
+networks:
+  local:
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: .docker/app/Dockerfile
+      args:
+        - APP_NAME=${APP_NAME}
+    networks:
+      - local
+    ports:
+      - ${BIND_ADDR}:${BIND_INTERNAL_ADDR}
+    depends_on:
+      - db
+
+  db:
+    image: postgres
+    networks:
+      - local
+    ports:
+      - ${DB_PORT}:${DB_INTERNAL_PORT}
+    environment:
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
