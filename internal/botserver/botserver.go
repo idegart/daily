@@ -34,6 +34,8 @@ func (bot BotServer) Start() error {
 		return err
 	}
 
+	defer bot.store.Close()
+
 	if err := bot.configureSlack(); err != nil {
 		return err
 	}
@@ -58,13 +60,13 @@ func (bot *BotServer) configureLogger() error {
 }
 
 func (bot *BotServer) configureStore() error {
-	store := store.New(bot.config.Store)
+	s := store.New(bot.config.Store)
 
-	if err := store.Open(); err != nil {
+	if err := s.Open(); err != nil {
 		return err
 	}
 
-	bot.store = store
+	bot.store = s
 
 	return nil
 }
