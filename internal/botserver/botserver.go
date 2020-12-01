@@ -1,6 +1,7 @@
 package botserver
 
 import (
+	"SlackBot/internal/slack"
 	"SlackBot/internal/store"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -13,6 +14,7 @@ type BotServer struct {
 	logger *logrus.Logger
 	router *mux.Router
 	store  *store.Store
+	slack  *slack.Slack
 }
 
 func New(config *Config) *BotServer {
@@ -29,6 +31,10 @@ func (bot BotServer) Start() error {
 	}
 
 	if err := bot.configureStore(); err != nil {
+		return err
+	}
+
+	if err := bot.configureSlack(); err != nil {
 		return err
 	}
 
@@ -59,6 +65,18 @@ func (bot *BotServer) configureStore() error {
 	}
 
 	bot.store = store
+
+	return nil
+}
+
+func (bot *BotServer) configureSlack() error {
+	slack := slack.New(bot.config.Slack)
+
+	if err := slack.SetApi(); err != nil {
+		return err
+	}
+
+	bot.slack = slack
 
 	return nil
 }
