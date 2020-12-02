@@ -4,19 +4,6 @@ networks:
   local:
 
 services:
-  app:
-    build:
-      context: .
-      dockerfile: .docker/app/Dockerfile
-      args:
-        - APP_NAME=${APP_NAME}
-    networks:
-      - local
-    ports:
-      - ${BIND_ADDR}:${BIND_INTERNAL_ADDR}
-    depends_on:
-      - db
-
   db:
     image: postgres
     networks:
@@ -27,3 +14,16 @@ services:
       POSTGRES_DB: ${DB_DATABASE}
       POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+
+  apiserver:
+    build:
+      context: .
+      dockerfile: .docker/go/Dockerfile
+      args:
+        - APP_NAME=apiserver
+    networks:
+      - local
+    ports:
+      - ${BIND_ADDR}:${BIND_INTERNAL_ADDR}
+    depends_on:
+      - db

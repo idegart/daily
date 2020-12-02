@@ -1,13 +1,13 @@
-package slack
+package logger
 
 import "os"
 
 type Config struct {
-	ApiToken string
+	LogLevel string
 }
 
 func NewConfig() *Config {
 	return &Config{
-		ApiToken: os.Getenv("SLACK_API_TOKEN"),
+		LogLevel: os.Getenv("LOG_LEVEL"),
 	}
 }

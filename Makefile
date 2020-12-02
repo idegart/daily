@@ -9,14 +9,14 @@ sgr0 := $(shell tput sgr0)
 start:
 	@printf "$(bold)Starting database$(sgr0)\n"
 	@make start-db
-	@printf "$(bold)Database started\nStarting app$(sgr0)\n"
-	@make start-app
+	@printf "$(bold)Database started\nStarting API Server$(sgr0)\n"
+	@make start-apiserver
 
-build:
-	go build -v -o bin/${APP_NAME} ./cmd/bot
+build-apiserver:
+	go build -v -o bin/apiserver ./cmd/apiserver
 
 start-db:
-	docker-compose up -d db
+	docker-compose up -d --remove-orphans db
 
-start-app:
-	docker-compose up --build app
+start-apiserver:
+	docker-compose up --build --remove-orphans apiserver
