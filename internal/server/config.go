@@ -1,8 +1,6 @@
-package api
+package server
 
-import (
-	"os"
-)
+import "os"
 
 type Config struct {
 	BindAddr string

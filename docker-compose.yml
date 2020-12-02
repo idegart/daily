@@ -27,3 +27,14 @@ services:
       - ${BIND_ADDR}:${BIND_INTERNAL_ADDR}
     depends_on:
       - db
+
+  dailybot:
+    build:
+      context: .
+      dockerfile: .docker/go/Dockerfile
+      args:
+        - APP_NAME=dailybot
+    networks:
+      - local
+    depends_on:
+      - db

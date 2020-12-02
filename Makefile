@@ -15,8 +15,14 @@ start:
 build-apiserver:
 	go build -v -o bin/apiserver ./cmd/apiserver
 
+build-dailybot:
+	go build -v -o bin/dailybot ./cmd/dailybot
+
 start-db:
 	docker-compose up -d --remove-orphans db
 
 start-apiserver:
 	docker-compose up --build --remove-orphans apiserver
+
+start-dailybot:
+	docker-compose up --build --remove-orphans dailybot
