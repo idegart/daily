@@ -1,6 +1,8 @@
 package logger
 
-import "os"
+import (
+	"SlackBot/internal/env"
+)
 
 type Config struct {
 	LogLevel string
@@ -8,6 +10,6 @@ type Config struct {
 
 func NewConfig() *Config {
 	return &Config{
-		LogLevel: os.Getenv("LOG_LEVEL"),
+		LogLevel: env.Get("LOG_LEVEL", "debug"),
 	}
 }

@@ -1,13 +1,11 @@
 package server
 
-import "os"
-
 type Config struct {
 	BindAddr string
 }
 
-func NewConfig() *Config {
+func NewConfig(addr string) *Config {
 	return &Config{
-		BindAddr: ":" + os.Getenv("BIND_INTERNAL_ADDR"),
+		BindAddr: ":" + addr,
 	}
 }

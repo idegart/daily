@@ -2,6 +2,7 @@ package main
 
 import (
 	"SlackBot/internal/database"
+	"SlackBot/internal/env"
 	"SlackBot/internal/logger"
 	"SlackBot/internal/server"
 	"github.com/joho/godotenv"
@@ -11,16 +12,16 @@ import (
 	"net/http"
 )
 
-func init() {
-	if err := godotenv.Load(); err != nil {
-		log.Fatal(err)
-	}
-}
-
 type App struct {
 	logger   *logrus.Logger
 	database *database.Database
 	server   *server.Server
+}
+
+func init() {
+	if err := godotenv.Load(); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func main() {
@@ -42,7 +43,10 @@ func main() {
 
 	defer app.database.Close()
 
-	app.server = server.NewServer(server.NewConfig(), appLogger)
+	app.server = server.NewServer(
+		server.NewConfig(env.Get("API_SERVER_BIND_INTERNAL_ADDR", "")),
+		appLogger,
+	)
 
 	app.setupRoutes()
 
@@ -57,7 +61,7 @@ func (app *App) setupRoutes() {
 
 func (app *App) handleHello() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		app.logger.Info("Handle hello")
-		io.WriteString(w, "Hello world")
+		app.logger.Info("Handle hello from api server")
+		io.WriteString(w, "Hello world from api server")
 	}
 }

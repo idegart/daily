@@ -24,7 +24,7 @@ services:
     networks:
       - local
     ports:
-      - ${BIND_ADDR}:${BIND_INTERNAL_ADDR}
+      - ${API_SERVER_BIND_ADDR}:${API_SERVER_BIND_INTERNAL_ADDR}
     depends_on:
       - db
 
@@ -36,5 +36,7 @@ services:
         - APP_NAME=dailybot
     networks:
       - local
+    ports:
+      - ${DAILY_BOT_SERVER_BIND_ADDR}:${DAILY_BOT_SERVER_BIND_INTERNAL_ADDR}
     depends_on:
       - db
