@@ -6,9 +6,11 @@ endif
 bold := $(shell tput bold)
 sgr0 := $(shell tput sgr0)
 
-start: start-db start-apiserver start-dailybot
+start: start-db start-bot
 
-stop: stop-db stop-apiserver stop-dailybot
+stop: stop-db stop-bot
+
+bot: build-bot run-bot
 
 start-db:
 	docker-compose up -d --remove-orphans db
@@ -17,25 +19,19 @@ stop-db:
 	docker-compose stop db
 
 migration:
-	@migrate create -ext sql -dir migrations ${name}
+	migrate create -ext sql -dir migrations ${name}
 
 db-migrate:
 	@migrate -path migrations -database "postgres://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_DATABASE}?sslmode=disable" up
 
-start-apiserver:
-	docker-compose up -d --build --remove-orphans apiserver
+start-bot:
+	docker-compose up -d --build --remove-orphans bot
 
-stop-apiserver:
-	docker-compose stop apiserver
+stop-bot:
+	docker-compose stop bot
 
-start-dailybot:
-	docker-compose up -d --build --remove-orphans dailybot
+build-bot:
+	go build -v -o bin/bot ./cmd/bot
 
-stop-dailybot:
-	docker-compose stop dailybot
-
-build-apiserver:
-	go build -v -o bin/apiserver ./cmd/apiserver
-
-build-dailybot:
-	go build -v -o bin/dailybot ./cmd/dailybot
+run-bot:
+	./bin/bot

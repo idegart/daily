@@ -15,28 +15,17 @@ services:
       POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
 
-  apiserver:
+  bot:
     build:
       context: .
       dockerfile: .docker/go/Dockerfile
       args:
-        - APP_NAME=apiserver
+        - APP_NAME=bot
+    env_file:
+      - .env
     networks:
       - local
     ports:
-      - ${API_SERVER_BIND_ADDR}:${API_SERVER_BIND_INTERNAL_ADDR}
-    depends_on:
-      - db
-
-  dailybot:
-    build:
-      context: .
-      dockerfile: .docker/go/Dockerfile
-      args:
-        - APP_NAME=dailybot
-    networks:
-      - local
-    ports:
-      - ${DAILY_BOT_SERVER_BIND_ADDR}:${DAILY_BOT_SERVER_BIND_INTERNAL_ADDR}
+      - ${SERVER_BIND_ADDR}:${SERVER_INTERNAL_BIND_ADDR}
     depends_on:
       - db
