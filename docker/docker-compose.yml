@@ -6,6 +6,8 @@ networks:
 services:
   db:
     image: postgres
+    env_file:
+      - .env
     networks:
       - local
     ports:
@@ -17,8 +19,8 @@ services:
 
   bot:
     build:
-      context: .
-      dockerfile: .docker/go/Dockerfile
+      context: ../
+      dockerfile: docker/go/Dockerfile
       args:
         - APP_NAME=bot
     env_file:

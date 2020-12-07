@@ -7,6 +7,7 @@ import (
 	"SlackBot/internal/logger"
 	"SlackBot/internal/server"
 	"SlackBot/internal/slackbot"
+	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 	"log"
 )
@@ -17,6 +18,13 @@ type App struct {
 	server   *server.Server
 	slackBot      *slackbot.SlackBot
 	dailyBot *daily.Bot
+}
+
+func init() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 }
 
 func main() {
@@ -60,7 +68,7 @@ func (a *App) configureDatabase() {
 
 func (a *App) configureServer() {
 	a.server = server.NewServer(
-		server.NewConfig(env.Get("SERVER_INTERNAL_BIND_ADDR", "")),
+		server.NewConfig(env.Get("SERVER_BIND_ADDR", "")),
 		a.logger,
 	)
 
