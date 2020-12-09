@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/slack-go/slack/slackevents"
 	"io"
 	"net/http"
@@ -10,37 +9,17 @@ import (
 
 func (a *App) configureRouter() {
 	a.server.Router.HandleFunc("/", a.handleHello())
-	a.server.Router.HandleFunc("/start-daily-bot", a.handleStartDailyBot())
 
 	callbackRoute := a.server.Router.PathPrefix("/callback").Subrouter()
-	callbackRoute.HandleFunc("/events", a.handleCallbackEvents())
+	callbackRoute.HandleFunc("/event", a.handleCallbackEvents())
+	callbackRoute.HandleFunc("/slash-command", a.handleCallbackSlashCommand())
+	callbackRoute.HandleFunc("/interaction", a.handleCallbackInteraction())
 }
 
 func (a *App) handleHello() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		a.logger.Info("Handle hello")
 		io.WriteString(w, "Hello world")
-	}
-}
-
-func (a *App) handleStartDailyBot() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		a.logger.Info("Handle start daily bot")
-
-		if a.dailyBot.IsEnabled {
-			io.WriteString(w, "Daily bot already started")
-			return
-		}
-
-		_, users, err := a.dailyBot.Start()
-
-		if err != nil {
-			a.logger.Error(err)
-			io.WriteString(w, fmt.Sprintf("Daily not started. Error: %s", err))
-			return
-		}
-
-		io.WriteString(w, fmt.Sprintf("Daily bot started. Will be notified %d users", len(users)))
 	}
 }
 
@@ -51,8 +30,6 @@ func (a *App) handleCallbackEvents() http.HandlerFunc {
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(r.Body)
 		body := buf.String()
-
-		a.logger.Info("Body request: ", body)
 
 		eventsAPIEvent, err := a.slackBot.HandleEvent(body)
 
@@ -66,12 +43,52 @@ func (a *App) handleCallbackEvents() http.HandlerFunc {
 			a.slackBot.HandleVerification(body, w)
 			return
 		}
+	}
+}
 
-		if eventsAPIEvent.Type == slackevents.CallbackEvent {
-			switch event := eventsAPIEvent.InnerEvent.Data.(type) {
-			case *slackevents.MessageEvent:
-				go a.dailyBot.HandleNewMessage(event)
+func (a *App) handleCallbackSlashCommand() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		a.logger.Info("Handle new slack slash command")
+
+		s, err := a.slackBot.HandleSlashCommand(r)
+
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		switch s.Command {
+		case "/start-daily":
+			msg, err := a.dailyBot.Start()
+			if err != nil {
+				a.logger.Error(err)
 			}
+			a.slackBot.WriteSlashResponse(w, msg)
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+func (a *App) handleCallbackInteraction() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		a.logger.Info("Handle new slack interaction")
+
+		payload, err := a.slackBot.HandleInteraction(r)
+
+		if err != nil {
+			a.logger.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		if payload.CallbackID == "daily_init" {
+			a.dailyBot.HandleStartSlackUser(payload)
+		}
+
+		if payload.CallbackID == "daily_report" {
+			a.dailyBot.HandleReport(payload)
 		}
 	}
 }

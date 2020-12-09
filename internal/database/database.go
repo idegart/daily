@@ -25,7 +25,7 @@ func NewDatabase(config *Config, logger *logrus.Logger) *Database {
 }
 
 func (d *Database) Open() error {
-	d.logger.Info("Open DB connection: ", d.config.DatabaseUrl)
+	d.logger.Info("Open DB connection")
 
 	db, err := sqlx.Connect("postgres", d.config.DatabaseUrl)
 

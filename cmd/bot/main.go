@@ -1,6 +1,7 @@
 package main
 
 import (
+	"SlackBot/internal/airtable"
 	"SlackBot/internal/daily"
 	"SlackBot/internal/database"
 	"SlackBot/internal/env"
@@ -16,8 +17,9 @@ type App struct {
 	logger   *logrus.Logger
 	database *database.Database
 	server   *server.Server
-	slackBot      *slackbot.SlackBot
+	slackBot *slackbot.SlackBot
 	dailyBot *daily.Bot
+	airtable *airtable.Airtable
 }
 
 func init() {
@@ -35,13 +37,16 @@ func main() {
 	app.logger.Info("Start app")
 
 	app.configureDatabase()
-	defer app.database.Close()
 
 	app.configureServer()
 
 	app.configureSlackBot()
 
+	app.configureAirtable()
+
 	app.configureDailyBot()
+
+	defer app.gracefullyStop()
 
 	if err := app.server.Start(); err != nil {
 		app.logger.Error(err)
@@ -85,6 +90,18 @@ func (a *App) configureSlackBot() {
 	a.slackBot = bot
 }
 
+func (a *App) configureAirtable() {
+	a.airtable = airtable.NewAirtable(airtable.NewConfig())
+}
+
 func (a *App) configureDailyBot() {
-	a.dailyBot = daily.NewDailyBot(a.logger, a.database, a.slackBot)
+	a.dailyBot = daily.NewDailyBot(a.logger, a.database, a.slackBot, a.airtable)
+}
+
+func (a *App) gracefullyStop() {
+	a.logger.Info("Stopping services")
+
+	if err := a.database.Close(); err != nil {
+		a.logger.Error(err)
+	}
 }
