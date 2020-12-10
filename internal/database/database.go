@@ -12,9 +12,8 @@ type Database struct {
 	logger *logrus.Logger
 	db     *sqlx.DB
 
-	userRepository             *UserRepository
-	dailySessionRepository     *DailySessionRepository
-	userDailySessionRepository *UserDailySessionRepository
+	userRepository *UserRepository
+	dailyReportRepository *DailyReportRepository
 }
 
 func NewDatabase(config *Config, logger *logrus.Logger) *Database {
@@ -45,7 +44,6 @@ func (d *Database) Open() error {
 }
 
 func (d *Database) Close() error {
-
 	d.logger.Info("Close DB connection")
 
 	if err := d.db.Close(); err != nil {
@@ -55,32 +53,27 @@ func (d *Database) Close() error {
 	return nil
 }
 
-func (d *Database) DailySession() *DailySessionRepository {
-	if d.dailySessionRepository == nil {
-		d.dailySessionRepository = &DailySessionRepository{
-			database: d,
-		}
-	}
-
-	return d.dailySessionRepository
+func (d *Database) Query() *sqlx.DB {
+	return d.db
 }
 
-func (d *Database) User() *UserRepository {
+func (d *Database) UserRepository() *UserRepository {
 	if d.userRepository == nil {
 		d.userRepository = &UserRepository{
-			database: d,
+			db: d.db,
 		}
 	}
 
 	return d.userRepository
 }
 
-func (d *Database) UserDailySession() *UserDailySessionRepository {
-	if d.userDailySessionRepository == nil {
-		d.userDailySessionRepository = &UserDailySessionRepository{
-			database: d,
+func (d *Database) DailyReportRepository() *DailyReportRepository {
+	if d.dailyReportRepository == nil {
+		d.dailyReportRepository = &DailyReportRepository{
+			db: d.db,
 		}
 	}
 
-	return d.userDailySessionRepository
+	return d.dailyReportRepository
 }
+

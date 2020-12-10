@@ -2,25 +2,15 @@ package main
 
 import (
 	"SlackBot/internal/airtable"
-	"SlackBot/internal/daily"
+	"SlackBot/internal/app/slackBot"
 	"SlackBot/internal/database"
 	"SlackBot/internal/env"
 	"SlackBot/internal/logger"
 	"SlackBot/internal/server"
-	"SlackBot/internal/slackbot"
+	"SlackBot/internal/slack"
 	"github.com/joho/godotenv"
-	"github.com/sirupsen/logrus"
 	"log"
 )
-
-type App struct {
-	logger   *logrus.Logger
-	database *database.Database
-	server   *server.Server
-	slackBot *slackbot.SlackBot
-	dailyBot *daily.Bot
-	airtable *airtable.Airtable
-}
 
 func init() {
 	err := godotenv.Load()
@@ -30,78 +20,31 @@ func init() {
 }
 
 func main() {
-	var app = &App{}
+	slackBot := configureSlackBot()
 
-	app.configureLogger()
-
-	app.logger.Info("Start app")
-
-	app.configureDatabase()
-
-	app.configureServer()
-
-	app.configureSlackBot()
-
-	app.configureAirtable()
-
-	app.configureDailyBot()
-
-	defer app.gracefullyStop()
-
-	if err := app.server.Start(); err != nil {
-		app.logger.Error(err)
+	if err := slackBot.Serve(); err != nil {
+		log.Fatal(err)
 	}
 }
 
-func (a *App) configureLogger() {
-	botLogger, err := logger.NewLogger(logger.NewConfig())
+func configureSlackBot() *slackBot.SlackBot {
+	logger, err := logger.NewLogger(logger.NewConfig())
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	a.logger = botLogger
-}
+	database := database.NewDatabase(database.NewConfig(), logger)
 
-func (a *App) configureDatabase() {
-	a.database = database.NewDatabase(database.NewConfig(), a.logger)
-
-	if err := a.database.Open(); err != nil {
-		a.logger.Fatal(err)
-	}
-}
-
-func (a *App) configureServer() {
-	a.server = server.NewServer(
-		server.NewConfig(env.Get("SERVER_BIND_ADDR", "")),
-		a.logger,
-	)
-
-	a.configureRouter()
-}
-
-func (a *App) configureSlackBot() {
-	bot, err := slackbot.NewSlackBot(slackbot.NewConfig(), a.logger)
-
-	if err != nil {
-		a.logger.Fatal(err)
+	if err := database.Open(); err != nil {
+		log.Fatal(err)
 	}
 
-	a.slackBot = bot
-}
+	server := server.NewServer(server.NewConfig(env.Get("SERVER_BIND_ADDR", "")), logger)
 
-func (a *App) configureAirtable() {
-	a.airtable = airtable.NewAirtable(airtable.NewConfig())
-}
+	slack := slack.NewSlack(slack.NewConfig(), logger)
 
-func (a *App) configureDailyBot() {
-	a.dailyBot = daily.NewDailyBot(a.logger, a.database, a.slackBot, a.airtable)
-}
+	airtable := airtable.NewAirtable(airtable.NewConfig(), logger)
 
-func (a *App) gracefullyStop() {
-	a.logger.Info("Stopping services")
-
-	if err := a.database.Close(); err != nil {
-		a.logger.Error(err)
-	}
+	return slackBot.NewSlackBot(logger, database, server, slack, airtable)
 }

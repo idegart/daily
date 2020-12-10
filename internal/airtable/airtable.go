@@ -3,26 +3,30 @@ package airtable
 import (
 	"SlackBot/internal/env"
 	"github.com/brianloveswords/airtable"
+	"github.com/sirupsen/logrus"
 )
 
 type Airtable struct {
 	config *Config
+	logger *logrus.Logger
 	Client *airtable.Client
 }
 
 type User struct {
 	airtable.Record // provides ID, CreatedTime
 	Fields          struct {
-		Name  string
-		Email string
-		Phone string
+		ID     int
+		Name   string
+		Email  string
+		Phone  string
 		Status string
 	}
 }
 
-func NewAirtable(config *Config) *Airtable {
+func NewAirtable(config *Config, logger *logrus.Logger) *Airtable {
 	return &Airtable{
 		config: config,
+		logger: logger,
 		Client: &airtable.Client{
 			APIKey: config.APIKey,
 			BaseID: config.BaseID,
@@ -31,6 +35,8 @@ func NewAirtable(config *Config) *Airtable {
 }
 
 func (a *Airtable) ActiveUsers() ([]User, error) {
+	a.logger.Info("Get active airtable users")
+
 	var users []User
 
 	usersTable := a.Client.Table(a.config.UsersTable)
@@ -38,8 +44,11 @@ func (a *Airtable) ActiveUsers() ([]User, error) {
 	if err := usersTable.List(&users, &airtable.Options{
 		Filter: `OR({Status}='Inhouse',{Status}='Outsource')`,
 	}); err != nil {
+		a.logger.Error(err)
 		return nil, err
 	}
+
+	a.logger.Infof("Total airtable users: %d", len(users))
 
 	if testUserEmail := env.Get("TEST_USER", ""); testUserEmail != "" {
 		for i := 0; i < len(users); i++ {

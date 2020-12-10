@@ -1,8 +1,6 @@
 package logger
 
-import (
-	"SlackBot/internal/env"
-)
+import "SlackBot/internal/env"
 
 type Config struct {
 	LogLevel string
