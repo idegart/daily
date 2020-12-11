@@ -1,7 +1,6 @@
 package airtable
 
 import (
-	"SlackBot/internal/env"
 	"github.com/brianloveswords/airtable"
 	"github.com/sirupsen/logrus"
 )
@@ -49,15 +48,6 @@ func (a *Airtable) ActiveUsers() ([]User, error) {
 	}
 
 	a.logger.Infof("Total airtable users: %d", len(users))
-
-	if testUserEmail := env.Get("TEST_USER", ""); testUserEmail != "" {
-		for i := 0; i < len(users); i++ {
-			if users[i].Fields.Email == testUserEmail {
-				var us []User
-				return append(us, users[i]), nil
-			}
-		}
-	}
 
 	return users, nil
 }

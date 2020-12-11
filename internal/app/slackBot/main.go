@@ -34,6 +34,9 @@ func NewSlackBot(logger *logrus.Logger, database *database.Database, server *ser
 }
 
 func (b *SlackBot) Serve() error {
+	if err := b.dailyBot.Init(); err != nil {
+		return err
+	}
 
 	b.configureRoutes()
 
@@ -74,11 +77,14 @@ func (b *SlackBot) handleCallbackEvents() http.HandlerFunc {
 			return
 		}
 
-		if eventsAPIEvent.Type == slackevents.URLVerification {
-			if err := b.slack.HandleVerification(w, body); err != nil {
+		switch eventsAPIEvent.Type {
+		case slackevents.URLVerification:
+			res, err := b.slack.HandleVerification(body);
+			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 			}
-			return
+			w.Header().Set("Content-Type", "text")
+			_, err = w.Write(res)
 		}
 	}
 }
@@ -94,11 +100,13 @@ func (b *SlackBot) handleCallbackSlashCommand() http.HandlerFunc {
 			return
 		}
 
-		b.logger.Info(command)
-
 		switch command.Command {
 		case "/start-daily":
-			if err := b.dailyBot.Start(); err != nil {
+			if err := b.dailyBot.StartForUser(command.UserID); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+		case "/send-reports":
+			if err := b.dailyBot.SendReports(); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 			}
 		default:
@@ -121,10 +129,14 @@ func (b *SlackBot) handleCallbackInteractive() http.HandlerFunc {
 		switch interaction.CallbackID {
 		case "daily_report_start":
 			b.logger.Info("daily_report_start")
-			b.dailyBot.StartUserReport(interaction)
+			if err := b.dailyBot.StartUserReport(interaction); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
 		case "daily_report_finish":
 			b.logger.Info("daily_report_finish")
-			b.dailyBot.FinishUserReport(interaction)
+			if err := b.dailyBot.FinishUserReport(interaction); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}

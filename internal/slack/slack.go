@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 )
 
 type Slack struct {
@@ -42,23 +43,17 @@ func (s *Slack) HandleCallbackEvent(body string) (*slackevents.EventsAPIEvent, e
 	return &eventsAPIEvent, nil
 }
 
-func (s *Slack) HandleVerification(w http.ResponseWriter, body string) error {
-
+func (s *Slack) HandleVerification(body string) ([]byte, error) {
 	s.logger.Info("Handle verification")
 
 	var resp *slackevents.ChallengeResponse
 	err := json.Unmarshal([]byte(body), &resp)
 	if err != nil {
 		s.logger.Error(err)
-		return err
-	}
-	w.Header().Set("Content-Type", "text")
-	if _, err := w.Write([]byte(resp.Challenge)); err != nil {
-		s.logger.Error(err)
-		return err
+		return nil, err
 	}
 
-	return nil
+	return []byte(resp.Challenge), nil
 }
 
 func (s *Slack) HandleCallbackSlashCommand(r *http.Request) (*slack.SlashCommand, error) {
@@ -119,6 +114,7 @@ func (s *Slack) GetActiveUsers() ([]slack.User, error) {
 	users, err := s.client.GetUsers()
 
 	if err != nil {
+		s.logger.Error(err)
 		return nil, err
 	}
 
@@ -126,19 +122,55 @@ func (s *Slack) GetActiveUsers() ([]slack.User, error) {
 
 	for i := 0; i < len(users); i++ {
 		if users[i].Deleted == false && users[i].IsBot == false {
-			if s.config.TestUser != "" {
-				if users[i].Profile.Email == s.config.TestUser {
-					activeUsers = append(activeUsers, users[i])
-				}
-			} else {
-				activeUsers = append(activeUsers, users[i])
-			}
+			activeUsers = append(activeUsers, users[i])
 		}
 	}
 
 	s.logger.Infof("Total active slack users: %d", len(activeUsers))
 
 	return activeUsers, nil
+}
+
+func (s *Slack) GetActiveProjectConversations() ([]slack.Channel, error) {
+	s.logger.Info("Get active project slack conversations")
+
+	var channels []slack.Channel
+	var cursor string
+
+	firstRequest := true
+
+	for firstRequest || cursor != "" {
+		firstRequest = false
+
+		params := &slack.GetConversationsParameters{
+			Cursor: cursor,
+		}
+
+		chs, c, err := s.client.GetConversations(params)
+
+		if err != nil {
+			s.logger.Error(err)
+			return nil, err
+		}
+
+		for _, channel := range chs {
+			//m, err := regexp.MatchString(`^(p\d{4}-|bot-test)`, channel.Name)
+			m, err := regexp.MatchString(`^bot-test`, channel.Name)
+
+			if err != nil {
+				s.logger.Error(err)
+				return nil, err
+			}
+
+			if !channel.IsArchived && m {
+				channels = append(channels, channel)
+			}
+		}
+
+		cursor = c
+	}
+
+	return channels, nil
 }
 
 func (s *Slack) Client() *slack.Client {

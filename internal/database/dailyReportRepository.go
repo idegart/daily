@@ -2,6 +2,7 @@ package database
 
 import (
 	"SlackBot/internal/models"
+	"database/sql"
 	"github.com/jmoiron/sqlx"
 	"time"
 )
@@ -49,4 +50,66 @@ func (r *DailyReportRepository) FindByDateAndUser(date time.Time, userId int) (*
 	}
 
 	return &report, nil
+}
+
+func (r *DailyReportRepository) FindAllByDateAndUsers(date time.Time, users []models.User) ([]models.DailyReport, error) {
+	var reports []models.DailyReport
+
+	var ids []int
+
+	for _, u := range users {
+		ids = append(ids, u.Id)
+	}
+
+	query, args, err := sqlx.In("SELECT * FROM daily_reports where date = ? and user_id in (?)", date,  ids)
+
+	if err != nil {
+		return nil, err
+	}
+
+	query = r.db.Rebind(query)
+
+	if err := r.db.Select(&reports, query, args...); err != nil {
+		return nil, err
+	}
+
+	return reports, nil
+}
+
+func (r *DailyReportRepository) CreateOrUpdateByDateAndUser(date time.Time, userId int, done string, willDo string, blocker string) (*models.DailyReport, error) {
+	report, err := r.FindByDateAndUser(date, userId)
+
+	if err == sql.ErrNoRows {
+		report = &models.DailyReport{
+			UserId:  userId,
+			Date:    time.Now(),
+			Done:    done,
+			WillDo:  willDo,
+			Blocker: blocker,
+		}
+
+		err = r.Create(report)
+
+		if err != nil {
+			return nil, err
+		}
+
+		return report, err
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	report.Done = done
+	report.WillDo = willDo
+	report.Blocker = blocker
+
+	err = r.Update(report)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return report, nil
 }

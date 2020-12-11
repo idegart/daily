@@ -5,7 +5,7 @@ import (
 	"SlackBot/internal/database"
 	"SlackBot/internal/models"
 	"SlackBot/internal/slack"
-	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/sirupsen/logrus"
 	slackgo "github.com/slack-go/slack"
@@ -20,8 +20,9 @@ type DailyBot struct {
 	slack    *slack.Slack
 	airtable *airtable.Airtable
 
-	airtableUsers map[string]*airtable.User
-	slackUsers    map[string]*slackgo.User
+	airtableUsers []airtable.User
+	slackUsers    []slackgo.User
+	users         []models.User
 }
 
 func NewDailyBot(logger *logrus.Logger, database *database.Database, slack *slack.Slack, airtable *airtable.Airtable) *DailyBot {
@@ -33,207 +34,227 @@ func NewDailyBot(logger *logrus.Logger, database *database.Database, slack *slac
 	}
 }
 
-func (b *DailyBot) Start() error {
-	if err := b.initAirtableUsers(); err != nil {
+func (b *DailyBot) Init() error {
+	if err := b.initUsers(); err != nil {
 		return err
 	}
-
-	if err := b.initSlackUsers(); err != nil {
-		return err
-	}
-
-	b.sendInitialMessages()
 
 	return nil
 }
 
-func (b *DailyBot) StartUserReport(callback *slackgo.InteractionCallback) {
-	err := b.slack.Client().OpenDialog(
-		callback.TriggerID,
-		slackgo.Dialog{
-			CallbackID:  "daily_report_finish",
-			Title:       "Daily report",
-			SubmitLabel: "Отправить",
-			Elements: []slackgo.DialogElement{
-				slackgo.NewTextAreaInput("Done", "Опиши что было сделано", ""),
-				slackgo.NewTextAreaInput("WillDo", "Опиши что было сделано", ""),
-				slackgo.NewTextAreaInput("Blocker", "Расскажи что тебе может помешать в твоей работе", ""),
-			},
-			State: callback.ResponseURL,
-		},
-	)
+func (b *DailyBot) initUsers() error {
+	b.logger.Info("Init users in daily bot")
+	wg := sync.WaitGroup{}
+	wg.Add(2)
 
-	if err != nil {
-		b.logger.Error(err)
+	go b.initAirtableUsers(&wg)
+	go b.initSlackUsers(&wg)
+
+	wg.Wait()
+
+	if b.airtableUsers == nil {
+		return errors.New("airtable users not set")
 	}
+
+	if b.slackUsers == nil {
+		return errors.New("slack users not set")
+	}
+
+	b.users = []models.User{}
+
+	mu := sync.Mutex{}
+
+	for _, au := range b.airtableUsers {
+		for _, su := range b.slackUsers {
+			if au.Fields.Email == su.Profile.Email {
+				wg.Add(1)
+				go func(email string, name string, airtableId int, slackId string) {
+					defer wg.Done()
+
+					user, err := b.database.UserRepository().FindByEmailOrCreate(
+						email,
+						name,
+						airtableId,
+						slackId,
+					)
+
+					if err != nil {
+						b.logger.Error(err)
+						return
+					}
+
+					mu.Lock()
+					b.users = append(b.users, *user)
+					mu.Unlock()
+
+				}(au.Fields.Email, au.Fields.Name, au.Fields.ID, su.ID)
+			}
+		}
+	}
+
+	wg.Wait()
+
+	b.logger.Info("Total users: ", len(b.users))
+
+	return nil
 }
 
-func (b *DailyBot) FinishUserReport(callback *slackgo.InteractionCallback) {
-	data := callback.DialogSubmissionCallback.Submission
+func (b *DailyBot) initAirtableUsers(wg *sync.WaitGroup) {
+	defer wg.Done()
 
-	msgText := fmt.Sprintf("User: %s, done: %s, will do: %s, blocker: %s", callback.User.Name, data["Done"], data["WillDo"], data["Blocker"])
-
-	b.logger.Infof("Handle new daily report: %s", msgText)
-
-	url := strings.ReplaceAll(callback.State, "\\", "")
-	url = strings.ReplaceAll(url, "\"", "")
-
-	_, _, err := b.slack.Client().PostMessage(callback.User.ID,
-		slackgo.MsgOptionText("Спасибо, можешь продолжить свою работу!", false),
-		slackgo.MsgOptionAttachments(),
-		slackgo.MsgOptionReplaceOriginal(url),
-	)
+	users, err := b.airtable.ActiveUsers()
 
 	if err != nil {
 		b.logger.Error(err)
+		return
 	}
+
+	b.airtableUsers = users
+}
+
+func (b *DailyBot) initSlackUsers(wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	users, err := b.slack.GetActiveUsers()
+
+	if err != nil {
+		b.logger.Error(err)
+		return
+	}
+
+	b.slackUsers = users
+}
+
+func (b *DailyBot) StartForUser(slackUserId string) error {
+	b.logger.Info("Start daily for user ", slackUserId)
 
 	var slackUser *slackgo.User
 
-	for _, su := range b.slackUsers {
-		if su.ID == callback.User.ID {
-			slackUser = su
+	for _, u := range b.slackUsers {
+		if u.ID == slackUserId {
+			slackUser = &u
 			break
 		}
 	}
 
 	if slackUser == nil {
-		b.logger.Errorf("can not find user % in initial array", callback.User.Name)
-		return
+		b.logger.Error("slack user not initialized in daily bot")
+		return errors.New("slack user not initialized in daily bot")
 	}
 
-	user, err := b.database.UserRepository().FindByEmail(slackUser.Profile.Email)
-
-	if err == sql.ErrNoRows {
-		err = nil
-
-		airtableUser, ok := b.airtableUsers[slackUser.Profile.Email]
-
-		if !ok {
-			b.logger.Errorf("For slack user %s not found airtable user", slackUser.Profile.Email)
-			return
-		}
-
-		user := &models.User{
-			Email:      slackUser.Profile.Email,
-			SlackId:    slackUser.ID,
-			AirtableId: airtableUser.Fields.ID,
-		}
-
-		err = b.database.UserRepository().Create(user)
-	}
-
-	if err != nil {
-		b.logger.Error(err)
-		return
-	}
-
-	report, err := b.database.DailyReportRepository().FindByDateAndUser(time.Now(), user.Id)
-
-	if err == sql.ErrNoRows {
-		report = &models.DailyReport{
-			UserId:  user.Id,
-			Date:    time.Now(),
-			Done:    data["Done"],
-			WillDo:  data["WillDo"],
-			Blocker: data["Blocker"],
-		}
-
-		b.logger.Warn(report)
-
-		err = b.database.DailyReportRepository().Create(report)
-
-		if err != nil {
-			b.logger.Error(err)
-			return
-		}
-
-		return
-	}
-
-	if err != nil {
-		b.logger.Error(err)
-		return
-	}
-
-	report.Done = data["Done"]
-	report.WillDo = data["WillDo"]
-	report.Blocker = data["Blocker"]
-
-	err = b.database.DailyReportRepository().Update(report)
-
-	if err != nil {
-		b.logger.Error(err)
-		return
-	}
+	return b.sendInitialMessageToUser(slackUser)
 }
 
-func (b *DailyBot) initAirtableUsers() error {
-	airtableUsers, err := b.airtable.ActiveUsers()
+func (b *DailyBot) StartUserReport(callback *slackgo.InteractionCallback) error {
+	b.logger.Info("Start user report")
+
+	return b.sendDailyModal(callback.TriggerID, callback.ResponseURL)
+}
+
+func (b *DailyBot) FinishUserReport(callback *slackgo.InteractionCallback) error {
+	b.logger.Info("Finish user report")
+
+	data := callback.DialogSubmissionCallback.Submission
+
+	msgText := fmt.Sprintf("User: %s, done: %s, will do: %s, blocker: %s", callback.User.Name, data["Done"], data["WillDo"], data["Blocker"])
+
+	url := strings.ReplaceAll(callback.State, "\\", "")
+	url = strings.ReplaceAll(url, "\"", "")
+
+	b.logger.Infof("Handle new daily report: %s", msgText)
+
+	var user *models.User
+
+	for _, u := range b.users {
+		if u.SlackId == callback.User.ID {
+			user = &u
+			break
+		}
+	}
+
+	if user == nil {
+		b.logger.Error("user not founded in initial")
+		return errors.New("user not founded in initial")
+	}
+
+	_, err := b.database.DailyReportRepository().CreateOrUpdateByDateAndUser(time.Now(), user.Id, data["Done"], data["WillDo"], data["Blocker"])
 
 	if err != nil {
+		b.logger.Error(err)
 		return err
 	}
 
-	b.airtableUsers = make(map[string]*airtable.User, len(airtableUsers))
-
-	for i := 0; i < len(airtableUsers); i++ {
-		b.airtableUsers[airtableUsers[i].Fields.Email] = &airtableUsers[i]
-	}
-
-	return nil
+	return b.sendThanksForReport(callback.User.ID, url)
 }
 
-func (b *DailyBot) initSlackUsers() error {
-	activeUsers, err := b.slack.GetActiveUsers()
+func (b *DailyBot) SendReports() error {
+	b.logger.Info("Send reports")
+
+	channels, err := b.slack.GetActiveProjectConversations()
 
 	if err != nil {
+		b.logger.Error(err)
 		return err
 	}
 
-	b.slackUsers = make(map[string]*slackgo.User, len(activeUsers))
-
-	for i := 0; i < len(activeUsers); i++ {
-		b.slackUsers[activeUsers[i].Profile.Email] = &activeUsers[i]
-	}
-
-	return nil
-}
-
-func (b *DailyBot) sendInitialMessages() {
 	ws := sync.WaitGroup{}
 
-	for email, _ := range b.airtableUsers {
-		if slackUser, ok := b.slackUsers[email]; ok {
-			ws.Add(1)
-			go b.sendInitialMessageToUser(&ws, slackUser)
-		}
+	for _, channel := range channels {
+		ws.Add(1)
+		go func(channel slackgo.Channel) {
+			defer ws.Done()
+			b.reportInChannel(channel)
+		}(channel)
 	}
 
 	ws.Wait()
+
+	return nil
 }
 
-func (b *DailyBot) sendInitialMessageToUser(ws *sync.WaitGroup, user *slackgo.User) {
-	attachment := slackgo.Attachment{
-		Pretext:    "Привет, настало время чтобы рассказать чем ты занимался вчера",
-		CallbackID: "daily_report_start",
-		Color:      "#3AA3E3",
-		Actions: []slackgo.AttachmentAction{
-			{
-				Name:  "accept",
-				Text:  "Приступить",
-				Style: "primary",
-				Type:  "button",
-				Value: "accept",
-			},
-		},
+func (b *DailyBot) reportInChannel(channel slackgo.Channel) error {
+	params := slackgo.GetUsersInConversationParameters{
+		ChannelID: channel.ID,
+		Limit:     100,
 	}
 
-	message := slackgo.MsgOptionAttachments(attachment)
+	slackUsersIds, _, err := b.slack.Client().GetUsersInConversation(&params)
 
-	if _, _, err := b.slack.Client().PostMessage(user.ID, slackgo.MsgOptionText("", false), message); err != nil {
+	if err != nil {
 		b.logger.Error(err)
+		return err
 	}
 
-	ws.Done()
+	var users []models.User
+
+	for _, slackUserId := range slackUsersIds {
+		for _, user := range b.users {
+			if user.SlackId == slackUserId {
+				users = append(users, user)
+				break
+			}
+		}
+	}
+
+	reports, err := b.database.DailyReportRepository().FindAllByDateAndUsers(time.Now(), users)
+
+	if err != nil {
+		b.logger.Error(err)
+		return err
+	}
+
+	var badUsers []string
+
+	out:
+	for _, users := range users {
+		for _, report := range reports {
+			if report.UserId == users.Id {
+				continue out
+			}
+		}
+
+		badUsers = append(badUsers, "<@"+users.SlackId+">")
+	}
+
+	return b.sendReportToChannel(channel.ID, users, badUsers, reports)
 }

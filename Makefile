@@ -21,7 +21,7 @@ stop-db:
 migration:
 	migrate create -ext sql -dir migrations ${name}
 
-db-migrate:
+migrate:
 	@migrate -path migrations -database "postgres://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_DATABASE}?sslmode=disable" up
 
 start-bot:

@@ -20,31 +20,31 @@ func init() {
 }
 
 func main() {
-	slackBot := configureSlackBot()
+	bot := configureSlackBot()
 
-	if err := slackBot.Serve(); err != nil {
+	if err := bot.Serve(); err != nil {
 		log.Fatal(err)
 	}
 }
 
 func configureSlackBot() *slackBot.SlackBot {
-	logger, err := logger.NewLogger(logger.NewConfig())
+	l, err := logger.NewLogger(logger.NewConfig())
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	database := database.NewDatabase(database.NewConfig(), logger)
+	db := database.NewDatabase(database.NewConfig(), l)
 
-	if err := database.Open(); err != nil {
+	if err := db.Open(); err != nil {
 		log.Fatal(err)
 	}
 
-	server := server.NewServer(server.NewConfig(env.Get("SERVER_BIND_ADDR", "")), logger)
+	serv := server.NewServer(server.NewConfig(env.Get("SERVER_BIND_ADDR", "")), l)
 
-	slack := slack.NewSlack(slack.NewConfig(), logger)
+	sl := slack.NewSlack(slack.NewConfig(), l)
 
-	airtable := airtable.NewAirtable(airtable.NewConfig(), logger)
+	air := airtable.NewAirtable(airtable.NewConfig(), l)
 
-	return slackBot.NewSlackBot(logger, database, server, slack, airtable)
+	return slackBot.NewSlackBot(l, db, serv, sl, air)
 }
