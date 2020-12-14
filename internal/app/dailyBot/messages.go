@@ -65,13 +65,13 @@ func (b *DailyBot) sendThanksForReport(userID string, replaceURL string) error {
 	return err
 }
 
-func (b *DailyBot) sendReportToChannel(channelId string, users []models.User, badUsers []string, reports []models.DailyReport) error {
+func (b *DailyBot) sendReportToChannel(channelId string, users []models.User, badUsers []string, reports []models.DailyReport, replaceURL string) error {
 	headerText := slack.NewTextBlockObject("mrkdwn", "*Гайз, я тут подготовил ежедневный отчет. Чек зис аут*", false, false)
 	headerSection := slack.NewSectionBlock(headerText, nil, nil)
 
 	ignoreText := slack.NewTextBlockObject(
 		"mrkdwn",
-		fmt.Sprintf("*Кто меня сегодня проигнорировал:*\n%s", strings.Join(badUsers, "\n") ),
+		fmt.Sprintf("*Кто меня сегодня проигнорировал:*\n%s", strings.Join(badUsers, "\n")),
 		false,
 		false)
 	ignoreSection := slack.NewSectionBlock(ignoreText, nil, nil)
@@ -92,7 +92,7 @@ func (b *DailyBot) sendReportToChannel(channelId string, users []models.User, ba
 		reportField := slack.NewTextBlockObject(
 			"mrkdwn",
 			fmt.Sprintf(
-				"%s\n*Делал вчера:*\n%s\n*Делает сегодня:*\n%s\n*Блокеры:*\n%s",
+				"*%s*\n```Делал вчера:\n%s\n\nДелает сегодня:\n%s\n\nБлокеры:\n%s```",
 				user.Name,
 				report.Done,
 				report.WillDo,
@@ -108,16 +108,47 @@ func (b *DailyBot) sendReportToChannel(channelId string, users []models.User, ba
 	willDoText := slack.NewTextBlockObject("mrkdwn", "*Что сегодня будет делать команда:*", false, false)
 	reportsSection := slack.NewSectionBlock(willDoText, reportsSlice, nil)
 
+	attachment := slack.Attachment{
+		Pretext:    "_Если внес изменения, то *не забудь жмакнуть*_",
+		CallbackID: "daily_report_refresh",
+		Color:      "#3AA3E3",
+		Actions: []slack.AttachmentAction{
+			{
+				Name:  "accept",
+				Text:  "Обновить",
+				Style: "primary",
+				Type:  "button",
+				Value: "accept",
+			},
+		},
+	}
+
 	msg := slack.MsgOptionBlocks(
 		headerSection,
+		slack.NewDividerBlock(),
 		ignoreSection,
+		slack.NewDividerBlock(),
 		reportsSection,
+		slack.NewDividerBlock(),
 	)
+
+	var options []slack.MsgOption
+
+	options = append(options, msg)
+	options = append(options, slack.MsgOptionAttachments(attachment))
+
+	if replaceURL != "" {
+		options = append(options, slack.MsgOptionReplaceOriginal(replaceURL))
+	}
 
 	_, _, err := b.slack.Client().PostMessage(
 		channelId,
-		msg,
+		options...,
 	)
+
+	if err != nil {
+		b.logger.Error(err)
+	}
 
 	return err
 }

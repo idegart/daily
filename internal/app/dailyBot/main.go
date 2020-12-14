@@ -203,7 +203,7 @@ func (b *DailyBot) SendReports() error {
 		ws.Add(1)
 		go func(channel slackgo.Channel) {
 			defer ws.Done()
-			b.reportInChannel(channel)
+			b.reportInChannel(channel, "")
 		}(channel)
 	}
 
@@ -212,7 +212,12 @@ func (b *DailyBot) SendReports() error {
 	return nil
 }
 
-func (b *DailyBot) reportInChannel(channel slackgo.Channel) error {
+func (b *DailyBot) RefreshReport(callback *slackgo.InteractionCallback) error {
+	b.reportInChannel(callback.Channel, callback.ResponseURL)
+	return nil
+}
+
+func (b *DailyBot) reportInChannel(channel slackgo.Channel, replaceURL string) error {
 	params := slackgo.GetUsersInConversationParameters{
 		ChannelID: channel.ID,
 		Limit:     100,
@@ -256,5 +261,5 @@ func (b *DailyBot) reportInChannel(channel slackgo.Channel) error {
 		badUsers = append(badUsers, "<@"+users.SlackId+">")
 	}
 
-	return b.sendReportToChannel(channel.ID, users, badUsers, reports)
+	return b.sendReportToChannel(channel.ID, users, badUsers, reports, replaceURL)
 }

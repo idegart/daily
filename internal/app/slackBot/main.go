@@ -137,6 +137,11 @@ func (b *SlackBot) handleCallbackInteractive() http.HandlerFunc {
 			if err := b.dailyBot.FinishUserReport(interaction); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 			}
+		case "daily_report_refresh":
+			b.logger.Info("daily_report_refresh")
+			if err := b.dailyBot.RefreshReport(interaction); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
