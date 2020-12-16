@@ -65,7 +65,7 @@ func (b *DailyBot) sendThanksForReport(userID string, replaceURL string) error {
 	return err
 }
 
-func (b *DailyBot) sendReportToChannel(channelId string, users []models.User, badUsers []string, reports []models.DailyReport, replaceURL string) error {
+func (b *DailyBot) sendReportToChannel(channelId string, users []models.User, badUsers []string, reports []models.DailyReport, replace string) (string, string, error) {
 	headerText := slack.NewTextBlockObject("mrkdwn", "*Гайз, я тут подготовил ежедневный отчет. Чек зис аут*", false, false)
 	headerSection := slack.NewSectionBlock(headerText, nil, nil)
 
@@ -108,47 +108,30 @@ func (b *DailyBot) sendReportToChannel(channelId string, users []models.User, ba
 	willDoText := slack.NewTextBlockObject("mrkdwn", "*Что сегодня будет делать команда:*", false, false)
 	reportsSection := slack.NewSectionBlock(willDoText, reportsSlice, nil)
 
-	attachment := slack.Attachment{
-		Pretext:    "_Если внес изменения, то *не забудь жмакнуть*_",
-		CallbackID: "daily_report_refresh",
-		Color:      "#3AA3E3",
-		Actions: []slack.AttachmentAction{
-			{
-				Name:  "accept",
-				Text:  "Обновить",
-				Style: "primary",
-				Type:  "button",
-				Value: "accept",
-			},
-		},
-	}
-
 	msg := slack.MsgOptionBlocks(
 		headerSection,
 		slack.NewDividerBlock(),
 		ignoreSection,
 		slack.NewDividerBlock(),
 		reportsSection,
-		slack.NewDividerBlock(),
 	)
 
 	var options []slack.MsgOption
 
 	options = append(options, msg)
-	options = append(options, slack.MsgOptionAttachments(attachment))
 
-	if replaceURL != "" {
-		options = append(options, slack.MsgOptionReplaceOriginal(replaceURL))
+	if replace != "" {
+		s1, s2, _, err := b.slack.Client().UpdateMessage(
+			channelId,
+			replace,
+			msg,
+		)
+
+		return s1, s2, err
 	}
 
-	_, _, err := b.slack.Client().PostMessage(
+	return b.slack.Client().PostMessage(
 		channelId,
 		options...,
 	)
-
-	if err != nil {
-		b.logger.Error(err)
-	}
-
-	return err
 }

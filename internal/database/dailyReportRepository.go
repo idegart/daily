@@ -76,40 +76,17 @@ func (r *DailyReportRepository) FindAllByDateAndUsers(date time.Time, users []mo
 	return reports, nil
 }
 
-func (r *DailyReportRepository) CreateOrUpdateByDateAndUser(date time.Time, userId int, done string, willDo string, blocker string) (*models.DailyReport, error) {
-	report, err := r.FindByDateAndUser(date, userId)
+func (r *DailyReportRepository) CreateOrUpdateByDateAndUser(report *models.DailyReport) error {
+	storedReport, err := r.FindByDateAndUser(report.Date, report.UserId)
+
+	if err == nil {
+		report.Id = storedReport.Id
+		return r.Update(report)
+	}
 
 	if err == sql.ErrNoRows {
-		report = &models.DailyReport{
-			UserId:  userId,
-			Date:    time.Now(),
-			Done:    done,
-			WillDo:  willDo,
-			Blocker: blocker,
-		}
-
-		err = r.Create(report)
-
-		if err != nil {
-			return nil, err
-		}
-
-		return report, err
+		return r.Create(report)
 	}
 
-	if err != nil {
-		return nil, err
-	}
-
-	report.Done = done
-	report.WillDo = willDo
-	report.Blocker = blocker
-
-	err = r.Update(report)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return report, nil
+	return err
 }

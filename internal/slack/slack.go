@@ -176,3 +176,44 @@ func (s *Slack) GetActiveProjectConversations() ([]slack.Channel, error) {
 func (s *Slack) Client() *slack.Client {
 	return s.client
 }
+
+func (s *Slack) GetActiveProjectConversationsForUser(user *slack.User) ([]slack.Channel, error) {
+
+	var channels []slack.Channel
+	var cursor string
+
+	firstRequest := true
+
+	for firstRequest || cursor != "" {
+		firstRequest = false
+
+		params := &slack.GetConversationsForUserParameters{
+			UserID: user.ID,
+			Cursor: cursor,
+		}
+
+		chs, c, err := s.client.GetConversationsForUser(params)
+
+		if err != nil {
+			s.logger.Error(err)
+			return nil, err
+		}
+
+		for _, channel := range chs {
+			m, err := regexp.MatchString(`^bot-test`, channel.Name)
+
+			if err != nil {
+				s.logger.Error(err)
+				return nil, err
+			}
+
+			if !channel.IsArchived && m {
+				channels = append(channels, channel)
+			}
+		}
+
+		cursor = c
+	}
+
+	return channels, nil
+}

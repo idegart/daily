@@ -5,6 +5,7 @@ import (
 	"SlackBot/internal/database"
 	"SlackBot/internal/models"
 	"SlackBot/internal/slack"
+	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/sirupsen/logrus"
@@ -34,99 +35,12 @@ func NewDailyBot(logger *logrus.Logger, database *database.Database, slack *slac
 	}
 }
 
-func (b *DailyBot) Init() error {
+func (b *DailyBot) StartForUser(slackUserId string) error {
+	b.logger.Info("Start daily for user ", slackUserId)
+
 	if err := b.initUsers(); err != nil {
 		return err
 	}
-
-	return nil
-}
-
-func (b *DailyBot) initUsers() error {
-	b.logger.Info("Init users in daily bot")
-	wg := sync.WaitGroup{}
-	wg.Add(2)
-
-	go b.initAirtableUsers(&wg)
-	go b.initSlackUsers(&wg)
-
-	wg.Wait()
-
-	if b.airtableUsers == nil {
-		return errors.New("airtable users not set")
-	}
-
-	if b.slackUsers == nil {
-		return errors.New("slack users not set")
-	}
-
-	b.users = []models.User{}
-
-	mu := sync.Mutex{}
-
-	for _, au := range b.airtableUsers {
-		for _, su := range b.slackUsers {
-			if au.Fields.Email == su.Profile.Email {
-				wg.Add(1)
-				go func(email string, name string, airtableId int, slackId string) {
-					defer wg.Done()
-
-					user, err := b.database.UserRepository().FindByEmailOrCreate(
-						email,
-						name,
-						airtableId,
-						slackId,
-					)
-
-					if err != nil {
-						b.logger.Error(err)
-						return
-					}
-
-					mu.Lock()
-					b.users = append(b.users, *user)
-					mu.Unlock()
-
-				}(au.Fields.Email, au.Fields.Name, au.Fields.ID, su.ID)
-			}
-		}
-	}
-
-	wg.Wait()
-
-	b.logger.Info("Total users: ", len(b.users))
-
-	return nil
-}
-
-func (b *DailyBot) initAirtableUsers(wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	users, err := b.airtable.ActiveUsers()
-
-	if err != nil {
-		b.logger.Error(err)
-		return
-	}
-
-	b.airtableUsers = users
-}
-
-func (b *DailyBot) initSlackUsers(wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	users, err := b.slack.GetActiveUsers()
-
-	if err != nil {
-		b.logger.Error(err)
-		return
-	}
-
-	b.slackUsers = users
-}
-
-func (b *DailyBot) StartForUser(slackUserId string) error {
-	b.logger.Info("Start daily for user ", slackUserId)
 
 	var slackUser *slackgo.User
 
@@ -147,6 +61,10 @@ func (b *DailyBot) StartForUser(slackUserId string) error {
 
 func (b *DailyBot) StartUserReport(callback *slackgo.InteractionCallback) error {
 	b.logger.Info("Start user report")
+
+	if err := b.initUsers(); err != nil {
+		return err
+	}
 
 	return b.sendDailyModal(callback.TriggerID, callback.ResponseURL)
 }
@@ -177,18 +95,43 @@ func (b *DailyBot) FinishUserReport(callback *slackgo.InteractionCallback) error
 		return errors.New("user not founded in initial")
 	}
 
-	_, err := b.database.DailyReportRepository().CreateOrUpdateByDateAndUser(time.Now(), user.Id, data["Done"], data["WillDo"], data["Blocker"])
+	report := &models.DailyReport{
+		UserId:  user.Id,
+		Date:    time.Now(),
+		Done:    data["Done"],
+		WillDo:  data["WillDo"],
+		Blocker: data["Blocker"],
+	}
 
-	if err != nil {
+	if err := b.database.DailyReportRepository().CreateOrUpdateByDateAndUser(report); err != nil {
 		b.logger.Error(err)
 		return err
 	}
 
-	return b.sendThanksForReport(callback.User.ID, url)
+	if err := b.sendThanksForReport(callback.User.ID, url); err != nil {
+		return err
+	}
+
+	_, err := b.database.SlackReportRepository().DateReportsExists(time.Now())
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil
+		}
+
+		b.logger.Error(err)
+		return err
+	}
+
+	return b.refreshReports(&callback.User)
 }
 
 func (b *DailyBot) SendReports() error {
 	b.logger.Info("Send reports")
+
+	if err := b.initUsers(); err != nil {
+		return err
+	}
 
 	channels, err := b.slack.GetActiveProjectConversations()
 
@@ -203,7 +146,7 @@ func (b *DailyBot) SendReports() error {
 		ws.Add(1)
 		go func(channel slackgo.Channel) {
 			defer ws.Done()
-			b.reportInChannel(channel, "")
+			b.reportInChannel(channel.ID)
 		}(channel)
 	}
 
@@ -212,14 +155,35 @@ func (b *DailyBot) SendReports() error {
 	return nil
 }
 
-func (b *DailyBot) RefreshReport(callback *slackgo.InteractionCallback) error {
-	b.reportInChannel(callback.Channel, callback.ResponseURL)
+func (b *DailyBot) refreshReports(user *slackgo.User) error {
+	b.logger.Info("Refresh reports")
+
+	if err := b.initUsers(); err != nil {
+		return err
+	}
+
+	channels, err := b.slack.GetActiveProjectConversationsForUser(user)
+
+	if err != nil {
+		return err
+	}
+
+	reports, err := b.database.SlackReportRepository().FindAllByDateAndChannels(time.Now(), channels)
+
+	if err != nil {
+		return err
+	}
+
+	for _, report := range reports {
+		go b.reportInChannel(report.SlackChannelId)
+	}
+
 	return nil
 }
 
-func (b *DailyBot) reportInChannel(channel slackgo.Channel, replaceURL string) error {
+func (b *DailyBot) reportInChannel(channelId string) error {
 	params := slackgo.GetUsersInConversationParameters{
-		ChannelID: channel.ID,
+		ChannelID: channelId,
 		Limit:     100,
 	}
 
@@ -261,5 +225,38 @@ func (b *DailyBot) reportInChannel(channel slackgo.Channel, replaceURL string) e
 		badUsers = append(badUsers, "<@"+users.SlackId+">")
 	}
 
-	return b.sendReportToChannel(channel.ID, users, badUsers, reports, replaceURL)
+	slackReport, err := b.database.SlackReportRepository().FindByDateAndSlackChannel(time.Now(), channelId)
+
+	if err == sql.ErrNoRows {
+		_, ts, err := b.sendReportToChannel(channelId, users, badUsers, reports, "")
+
+		if err != nil {
+			b.logger.Error(err)
+			return err
+		}
+
+		slackReport := &models.SlackReport{
+			SlackChannelId: channelId,
+			Date: time.Now(),
+			Ts: ts,
+		}
+
+		return b.database.SlackReportRepository().Create(slackReport)
+	}
+
+	if err != nil {
+		b.logger.Error(err)
+		return err
+	}
+
+	_, ts, err := b.sendReportToChannel(channelId, users, badUsers, reports, slackReport.Ts)
+
+	if err != nil {
+		b.logger.Error(err)
+		return err
+	}
+
+	slackReport.Ts = ts
+
+	return b.database.SlackReportRepository().Update(slackReport)
 }

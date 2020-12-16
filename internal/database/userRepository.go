@@ -38,27 +38,17 @@ func (r *UserRepository) FindByEmail(email string) (*models.User, error) {
 	return &user, nil
 }
 
-func (r *UserRepository) FindByEmailOrCreate(email string, name string, airtableId int, slackId string) (*models.User, error) {
-	user, err := r.FindByEmail(email)
+func (r *UserRepository) FindByEmailOrCreate(user *models.User) error {
+	storedUser, err := r.FindByEmail(user.Email)
+
+	if err == nil {
+		user.Id = storedUser.Id
+		return nil
+	}
 
 	if err == sql.ErrNoRows {
-		err = nil
-
-		user := &models.User{
-			Email:      email,
-			Name:       name,
-			SlackId:    slackId,
-			AirtableId: airtableId,
-		}
-
-		err = r.Create(user)
-
-		return user, err
+		return r.Create(user)
 	}
 
-	if err != nil {
-		return nil, err
-	}
-
-	return user, nil
+	return err
 }
