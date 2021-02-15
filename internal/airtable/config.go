@@ -1,17 +1,15 @@
 package airtable
 
-import "SlackBot/internal/env"
-
 type Config struct {
-	APIKey     string
-	BaseID     string
-	UsersTable string
+	apiKey     string
+	baseId     string
+	usersTable string
 }
 
-func NewConfig() *Config {
+func NewConfig(apiKey, baseId, usersTable string) *Config {
 	return &Config{
-		APIKey:     env.Get("AIRTABLE_API_KEY", ""),
-		BaseID:     env.Get("AIRTABLE_BASE_ID", ""),
-		UsersTable: env.Get("AIRTABLE_USERS_TABLE", ""),
+		apiKey:     apiKey,
+		baseId:     baseId,
+		usersTable: usersTable,
 	}
 }

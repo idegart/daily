@@ -9,18 +9,22 @@ import (
 type Server struct {
 	config *Config
 	logger *logrus.Logger
-	Router *mux.Router
+	router *mux.Router
 }
 
 func NewServer(config *Config, logger *logrus.Logger) *Server {
 	return &Server{
 		config: config,
 		logger: logger,
-		Router: mux.NewRouter(),
+		router: mux.NewRouter(),
 	}
 }
 
 func (s *Server) Start() error {
-	s.logger.Infof("Staring api server on port %s", s.config.BindAddr)
-	return http.ListenAndServe(s.config.BindAddr, s.Router)
+	s.logger.WithField("port", s.config.BindAddr).Info("Starting server")
+	return http.ListenAndServe(":" + s.config.BindAddr, s.router)
+}
+
+func (s *Server) Router() *mux.Router {
+	return s.router
 }

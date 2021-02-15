@@ -6,6 +6,6 @@ type Config struct {
 
 func NewConfig(addr string) *Config {
 	return &Config{
-		BindAddr: ":" + addr,
+		BindAddr: addr,
 	}
 }
