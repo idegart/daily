@@ -62,7 +62,7 @@ out:
 			}
 		}
 
-		//badChannelUsers = append(badChannelUsers, channelUsers[i])
+		badChannelUsers = append(badChannelUsers, channelUsers[i])
 	}
 
 	slackReport, err := a.database.SlackReport().FindBySlackChannelAndDate(channel.ID, time.Now())
