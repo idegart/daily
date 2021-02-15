@@ -55,13 +55,13 @@ func main() {
 
 	app.cron = cron.New()
 
-	if _, err := app.cron.AddFunc("0 8 * * * *", func() {
+	if _, err := app.cron.AddFunc("0 8 * * *", func() {
 		go app.sendInitialMessages()
 	}); err != nil {
 		app.logger.Fatal(err)
 	}
 
-	if _, err := app.cron.AddFunc("0 10 * * * *", func() {
+	if _, err := app.cron.AddFunc("0 10 * * *", func() {
 		go app.sendReports()
 	}); err != nil {
 		app.logger.Fatal(err)
