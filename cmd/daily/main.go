@@ -61,7 +61,7 @@ func main() {
 		app.logger.Fatal(err)
 	}
 
-	if _, err := app.cron.AddFunc("0 9 * * * *", func() {
+	if _, err := app.cron.AddFunc("0 10 * * * *", func() {
 		go app.sendReports()
 	}); err != nil {
 		app.logger.Fatal(err)

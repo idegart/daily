@@ -15,9 +15,9 @@ func (a *App) sendInitialMessages() {
 	}
 
 	for i := range app.users {
-		if app.users[i].Email == "a.degtyarev@proscom.ru" {
+		//if app.users[i].Email == "a.degtyarev@proscom.ru" {
 			a.sendInitialMessageToUser(app.users[i].SlackId)
-		}
+		//}
 	}
 }
 
