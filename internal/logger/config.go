@@ -1,11 +1,11 @@
 package logger
 
-type Config struct {
-	LogLevel string
-}
+import (
+	"bot/internal/config"
+)
 
-func NewConfig(level string) *Config {
-	return &Config{
+func NewConfig(level string) *config.Logger {
+	return &config.Logger{
 		LogLevel: level,
 	}
 }

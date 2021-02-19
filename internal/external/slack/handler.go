@@ -17,7 +17,7 @@ func (s *Slack) HandleInteraction(r *http.Request) (*slack.InteractionCallback, 
 		return nil, err
 	}
 
-	if payload.Token != s.config.verificationToken {
+	if payload.Token != s.config.VerificationToken {
 		return nil, errors.New("bad verification")
 	}
 

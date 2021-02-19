@@ -1,18 +1,6 @@
 package airtable
 
-import (
-	"github.com/brianloveswords/airtable"
-	"github.com/sirupsen/logrus"
-)
-
-type Airtable struct {
-	config *Config
-	logger *logrus.Logger
-	client *airtable.Client
-
-	users       []User
-	activeUsers []User
-}
+import "github.com/brianloveswords/airtable"
 
 type User struct {
 	airtable.Record
@@ -22,17 +10,6 @@ type User struct {
 		Email  string
 		Phone  string
 		Status string
-	}
-}
-
-func NewAirtable(config *Config, logger *logrus.Logger) *Airtable {
-	return &Airtable{
-		config: config,
-		logger: logger,
-		client: &airtable.Client{
-			APIKey: config.apiKey,
-			BaseID: config.baseId,
-		},
 	}
 }
 
@@ -48,9 +25,16 @@ func (a *Airtable) GetActiveUsers(force bool) ([]User, error) {
 
 	var activeUsers []User
 
+	var allowedStatuses = []string{
+		userStatusOutsource,
+		userStatusInHouse,
+	}
+
 	for i := range users {
-		if users[i].Fields.Status == "Inhouse" || users[i].Fields.Status == "Outsource" {
-			activeUsers = append(activeUsers, users[i])
+		for _, status := range allowedStatuses {
+			if users[i].Fields.Status == status {
+				activeUsers = append(activeUsers, users[i])
+			}
 		}
 	}
 
@@ -70,7 +54,7 @@ func (a *Airtable) loadUsers(force bool) ([]User, error) {
 
 	var users []User
 
-	usersTable := a.client.Table(a.config.usersTable)
+	usersTable := a.client.Table(a.config.TeamTable)
 
 	if err := usersTable.List(&users, &airtable.Options{}); err != nil {
 		a.logger.Error(err)

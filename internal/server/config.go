@@ -1,11 +1,9 @@
 package server
 
-type Config struct {
-	BindAddr string
-}
+import "bot/internal/config"
 
-func NewConfig(addr string) *Config {
-	return &Config{
+func NewConfig(addr string) *config.Server {
+	return &config.Server{
 		BindAddr: addr,
 	}
 }

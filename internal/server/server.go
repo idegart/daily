@@ -1,18 +1,19 @@
 package server
 
 import (
+	"bot/internal/config"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 	"net/http"
 )
 
 type Server struct {
-	config *Config
+	config *config.Server
 	logger *logrus.Logger
 	router *mux.Router
 }
 
-func NewServer(config *Config, logger *logrus.Logger) *Server {
+func NewServer(config *config.Server, logger *logrus.Logger) *Server {
 	return &Server{
 		config: config,
 		logger: logger,

@@ -1,16 +1,15 @@
 package main
 
 import (
-	"bot/internal/airtable"
+	"bot/internal/apps/staff"
 	"bot/internal/database"
+	"bot/internal/external/airtable"
+	"bot/internal/external/slack"
 	baseLogger "bot/internal/logger"
 	"bot/internal/model"
 	"bot/internal/server"
-	"bot/internal/slack"
 	"github.com/joho/godotenv"
-	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
-	slackGo "github.com/slack-go/slack"
 	"log"
 	"os"
 )
@@ -22,12 +21,7 @@ type App struct {
 	airtable *airtable.Airtable
 	slack    *slack.Slack
 
-	cron *cron.Cron
-
-	airtableUsers []airtable.User
-	slackUsers    []slackGo.User
-	users         []model.User
-	slackProjects []slackGo.Channel
+	staff *staff.Staff
 }
 
 var app App
@@ -53,22 +47,6 @@ func main() {
 
 	defer app.close()
 
-	app.cron = cron.New()
-
-	if _, err := app.cron.AddFunc("0 8 * * *", func() {
-		go app.sendInitialMessages()
-	}); err != nil {
-		app.logger.Fatal(err)
-	}
-
-	if _, err := app.cron.AddFunc("0 10 * * *", func() {
-		go app.sendReports()
-	}); err != nil {
-		app.logger.Fatal(err)
-	}
-
-	app.cron.Start()
-
 	if err := app.server.Start(); err != nil {
 		app.logger.Fatal(err)
 	}
@@ -80,27 +58,45 @@ func (a *App) close() {
 	}
 }
 
-func (a *App) FindUserBySlackId(slackId string) *model.User  {
-	for i := range a.users {
-		if a.users[i].SlackId == slackId {
-			return &a.users[i]
-		}
+func (a *App) SendInitialMessages() ([]model.User, error) {
+	users, err := a.staff.GetUsers(true)
+
+	if err != nil {
+		return nil, err
 	}
 
-	return nil
-}
-
-func (a App) GetUsersBySlackUsers(slackUsers []slackGo.User) []model.User {
-	var users []model.User
-
-	for i := range a.users {
-		for j := range slackUsers {
-			if a.users[i].SlackId == slackUsers[j].ID {
-				users = append(users, a.users[i])
+	for _, user := range users {
+		if user.Email == "a.degtyarev@proscom.ru" {
+			if err := a.SendSlackInitialMessageToUser(user); err != nil {
+				a.logger.Error(err)
 			}
 		}
+
 	}
 
-	return users
+	return users, nil
 }
 
+//func (a *App) FindUserBySlackId(slackId string) *model.User {
+//	for i := range a.users {
+//		if a.users[i].SlackId == slackId {
+//			return &a.users[i]
+//		}
+//	}
+//
+//	return nil
+//}
+//
+//func (a App) GetUsersBySlackUsers(slackUsers []slackGo.User) []model.User {
+//	var users []model.User
+//
+//	for i := range a.users {
+//		for j := range slackUsers {
+//			if a.users[i].SlackId == slackUsers[j].ID {
+//				users = append(users, a.users[i])
+//			}
+//		}
+//	}
+//
+//	return users
+//}

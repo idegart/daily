@@ -1,14 +1,19 @@
 package sqlx
 
 import (
+	"bot/internal/config"
 	"bot/internal/database"
+	"errors"
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/sirupsen/logrus"
 )
 
 type Database struct {
-	config                *Config
+	config                *config.DB
 	db                    *sqlx.DB
 	logger                *logrus.Logger
 	userRepository        *UserRepository
@@ -16,7 +21,7 @@ type Database struct {
 	slackReportRepository *SlackReportRepository
 }
 
-func New(config *Config, logger *logrus.Logger) *Database {
+func New(config *config.DB, logger *logrus.Logger) *Database {
 	return &Database{
 		config: config,
 		logger: logger,
@@ -26,7 +31,7 @@ func New(config *Config, logger *logrus.Logger) *Database {
 func (d *Database) Open() error {
 	d.logger.Info("Open DB connection")
 
-	db, err := sqlx.Connect(d.config.driver, d.config.url)
+	db, err := sqlx.Connect(d.config.Driver, d.config.Url)
 
 	if err != nil {
 		return err
@@ -37,6 +42,39 @@ func (d *Database) Open() error {
 	d.logger.Info("Check for DB connection")
 
 	if err := db.Ping(); err != nil {
+		return err
+	}
+
+	d.logger.Info("Start migrations")
+
+	if err := d.migrate(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (d *Database) migrate() error {
+	driver, err := postgres.WithInstance(d.db.DB, &postgres.Config{})
+
+	if err != nil {
+		return err
+	}
+
+	m, err := migrate.NewWithDatabaseInstance(
+		"file://migrations",
+		"postgres", driver)
+
+	if err != nil {
+		return err
+	}
+
+	if err := m.Up(); err != nil {
+		if errors.Is(err, migrate.ErrNoChange) {
+			d.logger.Info("Nothing to migrate")
+			return nil
+		}
+
 		return err
 	}
 

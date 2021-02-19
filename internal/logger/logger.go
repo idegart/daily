@@ -1,8 +1,11 @@
 package logger
 
-import "github.com/sirupsen/logrus"
+import (
+	"bot/internal/config"
+	"github.com/sirupsen/logrus"
+)
 
-func NewLogger(config *Config) (*logrus.Logger, error) {
+func NewLogger(config *config.Logger) (*logrus.Logger, error) {
 	level, err := logrus.ParseLevel(config.LogLevel)
 
 	if err != nil {
