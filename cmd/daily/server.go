@@ -12,6 +12,9 @@ func (a *App) configureServer() {
 
 	a.server.Router().HandleFunc("/health", a.handleHealth())
 	a.server.Router().HandleFunc("/callback/interactive", a.handleSlackInteractiveCallback())
+
+	a.server.Router().HandleFunc("/secret/start-daily", a.handleSecretStartDaily())
+	a.server.Router().HandleFunc("/secret/finish-daily", a.handleSecretFinishDaily())
 }
 
 func (a App) handleHealth() http.HandlerFunc {
@@ -46,5 +49,23 @@ func (a *App) handleSlackInteractiveCallback() http.HandlerFunc {
 			}
 		}
 		w.WriteHeader(http.StatusInternalServerError)
+	}
+}
+
+func (a *App) handleSecretStartDaily() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		a.sendInitialMessages()
+		if err := json.NewEncoder(w).Encode(map[string]bool{"started": true}); err != nil {
+			a.logger.Fatal(err)
+		}
+	}
+}
+
+func (a *App) handleSecretFinishDaily() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		a.sendReports()
+		if err := json.NewEncoder(w).Encode(map[string]bool{"started": true}); err != nil {
+			a.logger.Fatal(err)
+		}
 	}
 }
