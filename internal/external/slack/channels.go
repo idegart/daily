@@ -2,7 +2,6 @@ package slack
 
 import (
 	"github.com/slack-go/slack"
-	"regexp"
 )
 
 func (s *Slack) GetChannels(force bool) ([]slack.Channel, error) {
@@ -58,13 +57,13 @@ func (s *Slack) GetActiveProjectChannels(force bool) ([]slack.Channel, error) {
 
 	for i := range s.channels {
 		//m, err := regexp.MatchString(`^(p\d{4}-|bot-test)`, s.channels[i].Name)
-		m, err := regexp.MatchString(`^id-732-fullhouse`, s.channels[i].Name)
+		//m, err := regexp.MatchString(`^id-732-fullhouse`, s.channels[i].Name)
 
-		if err != nil {
-			return nil, err
-		}
+		//if err != nil {
+		//	return nil, err
+		//}
 
-		if !s.channels[i].IsArchived && m {
+		if !s.channels[i].IsArchived {
 			channels = append(channels, s.channels[i])
 		}
 	}

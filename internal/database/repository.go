@@ -17,6 +17,7 @@ type DailyReportRepository interface {
 	Update(report *model.DailyReport) error
 	GetByDate(time time.Time) ([]model.DailyReport, error)
 	FindByUserAndDate(userId int, time time.Time) (*model.DailyReport, error)
+	FindByUsersAndDate(usersId []int, time time.Time) ([]model.DailyReport, error)
 	UpdateOrCreate(report *model.DailyReport) error
 }
 

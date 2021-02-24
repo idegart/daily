@@ -14,7 +14,7 @@ type SlackReportRepository struct {
 
 func (r *SlackReportRepository) Create(report *model.SlackReport) error {
 	return r.db.QueryRow(
-		"INSERT INTO slack_reports (slack_channel_id, date, ts) VALUES ($1, $2, $3) RETURNING id",
+		"INSERT INTO daily_slack_reports (slack_channel_id, date, ts) VALUES ($1, $2, $3) RETURNING id",
 		report.SlackChannelId,
 		report.Date,
 		report.Ts,
@@ -23,7 +23,7 @@ func (r *SlackReportRepository) Create(report *model.SlackReport) error {
 
 func (r *SlackReportRepository) Update(report *model.SlackReport) error {
 	_, err := r.db.NamedExec(
-		"UPDATE slack_reports SET ts=:ts, updated_at = now() WHERE id=:id",
+		"UPDATE daily_slack_reports SET ts=:ts, updated_at = now() WHERE id=:id",
 		report,
 	)
 
@@ -35,7 +35,7 @@ func (r *SlackReportRepository) FindBySlackChannelAndDate(slackChannelId string,
 
 	if err := r.db.Get(
 		&slackReport,
-		"SELECT * FROM slack_reports WHERE slack_channel_id=$1 and date=$2",
+		"SELECT * FROM daily_slack_reports WHERE slack_channel_id=$1 and date=$2",
 		slackChannelId,
 		time,
 	); err != nil {

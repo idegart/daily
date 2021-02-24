@@ -16,9 +16,6 @@ type Server struct {
 type Airtable struct {
 	ApiKey string
 	AppId string
-
-	TeamTable string
-	ProjectsTable string
 }
 
 type Slack struct {

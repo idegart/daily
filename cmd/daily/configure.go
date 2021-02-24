@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bot/internal/apps/staff"
 	"bot/internal/database/sqlx"
 	"bot/internal/external/airtable"
 	"bot/internal/external/slack"
@@ -17,10 +16,6 @@ func (a *App) configure() error {
 	configureAirtable(a)
 
 	configureSlack(a)
-
-	if err := configureStaff(a); err != nil {
-		return err
-	}
 
 	configureServer(a)
 
@@ -52,10 +47,24 @@ func configureAirtable(a *App) {
 		airtable.NewConfig(
 			os.Getenv("AIRTABLE_API_KEY"),
 			os.Getenv("AIRTABLE_APP_ID"),
-			os.Getenv("AIRTABLE_TEAM_TABLE"),
-			os.Getenv("AIRTABLE_PROJECTS_TABLE"),
 		),
 		a.logger,
+	)
+
+	a.airtable.SetupActive(
+		airtable.NewActiveConfig(
+			os.Getenv("AIRTABLE_ACTIVE_PROJECTS_TABLE"),
+			os.Getenv("AIRTABLE_ACTIVE_PROJECTS_VIEW"),
+			os.Getenv("AIRTABLE_ACTIVE_TEAM_TABLE"),
+			os.Getenv("AIRTABLE_ACTIVE_TEAM_VIEW"),
+		),
+	)
+
+	a.airtable.SetupInfographics(
+		airtable.NewInfographicsConfig(
+			os.Getenv("AIRTABLE_ACTIVE_INFOGRAPHICS_TEAM_TABLE"),
+			os.Getenv("AIRTABLE_ACTIVE_INFOGRAPHICS_TEAM_VIEW"),
+		),
 	)
 }
 
@@ -67,18 +76,12 @@ func configureSlack(a *App) {
 	), a.logger)
 }
 
-func configureStaff(a *App) error {
-	a.staff = staff.New(a.logger, a.database, a.airtable, a.slack)
-
-	return a.staff.Initialize()
-}
-
 func configureServer(a *App) {
 	a.server = server.NewServer(server.NewConfig(os.Getenv("DAILY_PORT")), a.logger)
 
 	a.server.Router().HandleFunc("/health", handleHealth(a))
-	//a.server.Router().HandleFunc("/callback/interactive", handleSlackInteractiveCallback(a))
+	a.server.Router().HandleFunc("/callback/interactive", handleSlackInteractiveCallback(a))
 
 	a.server.Router().HandleFunc("/start-daily", handleStartDaily(a))
-	//a.server.Router().HandleFunc("/secret/finish-daily", handleSecretFinishDaily(a))
+	a.server.Router().HandleFunc("/send-reports", handleSendReports(a))
 }

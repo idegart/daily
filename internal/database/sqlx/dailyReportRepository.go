@@ -14,7 +14,7 @@ type DailyReportRepository struct {
 
 func (r *DailyReportRepository) Create(report *model.DailyReport) error {
 	return r.db.QueryRow(
-		"INSERT INTO daily_reports (user_id, date, done, will_do, blocker) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+		"INSERT INTO daily_user_reports (user_id, date, done, will_do, blocker) VALUES ($1, $2, $3, $4, $5) RETURNING id",
 		report.UserId,
 		report.Date,
 		report.Done,
@@ -25,7 +25,7 @@ func (r *DailyReportRepository) Create(report *model.DailyReport) error {
 
 func (r *DailyReportRepository) Update(report *model.DailyReport) error {
 	_, err := r.db.NamedExec(
-		"UPDATE daily_reports SET user_id=:user_id, date=:date, done=:done, will_do=:will_do, blocker=:blocker, updated_at = now() WHERE id=:id",
+		"UPDATE daily_user_reports SET user_id=:user_id, date=:date, done=:done, will_do=:will_do, blocker=:blocker, updated_at = now() WHERE id=:id",
 		report,
 	)
 
@@ -35,7 +35,7 @@ func (r *DailyReportRepository) Update(report *model.DailyReport) error {
 func (r *DailyReportRepository) GetByDate(time time.Time) ([]model.DailyReport, error) {
 	var reports []model.DailyReport
 
-	query, args, err := sqlx.In("SELECT * FROM daily_reports where date = ?", time)
+	query, args, err := sqlx.In("SELECT * FROM daily_user_reports where date = ?", time)
 
 	if err != nil {
 		return nil, err
@@ -55,7 +55,7 @@ func (r *DailyReportRepository) FindByUserAndDate(userId int, time time.Time) (*
 
 	if err := r.db.Get(
 		&dailyReport,
-		"SELECT * FROM daily_reports WHERE user_id=$1 and date=$2",
+		"SELECT * FROM daily_user_reports WHERE user_id=$1 and date=$2",
 		userId,
 		time,
 	); err != nil {
@@ -63,6 +63,22 @@ func (r *DailyReportRepository) FindByUserAndDate(userId int, time time.Time) (*
 	}
 
 	return &dailyReport, nil
+}
+
+func (r *DailyReportRepository) FindByUsersAndDate(usersId []int, time time.Time) ([]model.DailyReport, error) {
+	var dailyReports []model.DailyReport
+
+	query, args, err := sqlx.In("SELECT * FROM daily_user_reports WHERE user_id IN (?) AND date=?", usersId, time)
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.db.Select(&dailyReports, r.db.Rebind(query), args...)
+	if err != nil {
+		return nil, err
+	}
+
+	return dailyReports, nil
 }
 
 func (r *DailyReportRepository) UpdateOrCreate(report *model.DailyReport) error {
