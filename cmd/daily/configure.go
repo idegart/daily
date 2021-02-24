@@ -5,6 +5,7 @@ import (
 	"bot/internal/external/airtable"
 	"bot/internal/external/slack"
 	"bot/internal/server"
+	"net/http"
 	"os"
 )
 
@@ -82,6 +83,21 @@ func configureServer(a *App) {
 	a.server.Router().HandleFunc("/health", handleHealth(a))
 	a.server.Router().HandleFunc("/callback/interactive", handleSlackInteractiveCallback(a))
 
-	a.server.Router().HandleFunc("/start-daily", handleStartDaily(a))
-	a.server.Router().HandleFunc("/send-reports", handleSendReports(a))
+	secure := a.server.Router().PathPrefix("/secure").Subrouter()
+	secure.Use(authenticationMiddleware)
+
+	secure.HandleFunc("/start-daily", handleStartDaily(a))
+	secure.HandleFunc("/send-reports", handleSendReports(a))
+}
+
+func authenticationMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token := r.Header.Get("X-Session-Token")
+
+		if token == os.Getenv("DAILY_AUTHENTICATION") {
+			next.ServeHTTP(w, r)
+		} else {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+		}
+	})
 }
