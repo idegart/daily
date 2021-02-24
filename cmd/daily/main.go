@@ -53,8 +53,6 @@ func main() {
 
 	defer app.close()
 
-	app.SendReports()
-
 	if err := app.server.Start(); err != nil {
 		app.logger.Fatal(err)
 	}
