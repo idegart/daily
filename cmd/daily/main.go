@@ -53,6 +53,8 @@ func main() {
 
 	defer app.close()
 
+	app.SendReports()
+
 	if err := app.server.Start(); err != nil {
 		app.logger.Fatal(err)
 	}
@@ -122,6 +124,10 @@ func (a *App) SendReports() error {
 }
 
 func (a *App) SendReportToProject(project airtable.Project) {
+	if _, _, _, err := a.slack.Client().JoinConversation(project.Fields.SlackID); err != nil {
+		a.logger.Error(err)
+	}
+
 	projectUsers := a.GetUsersBySlackUsersId(project.GetSlackIds())
 
 	var usersId []int
