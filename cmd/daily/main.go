@@ -192,6 +192,7 @@ func (a *App) ResendReportsByUser(user *model.User) {
 
 				if err != nil && !errors.Is(err, sql.ErrNoRows) {
 					a.logger.Error(err)
+					return
 				}
 
 				if report != nil {
