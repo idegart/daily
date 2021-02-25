@@ -53,6 +53,10 @@ func main() {
 
 	defer app.close()
 
+	if err := app.PrepareTeam(); err != nil {
+		app.logger.Fatal(err)
+	}
+
 	if err := app.server.Start(); err != nil {
 		app.logger.Fatal(err)
 	}
