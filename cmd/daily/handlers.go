@@ -65,14 +65,14 @@ func handleSendReports(a *App) http.HandlerFunc {
 
 func handleSlackInteractiveCallback(a *App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		a.logger.Info("Handle new slack interactive")
-
 		interaction, err := a.slack.HandleInteraction(r)
 
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+
+		a.logger.WithField("interaction", interaction).Info("Handle new slack interactive")
 
 		switch interaction.CallbackID {
 		case SIDailyReportCallbackStart:

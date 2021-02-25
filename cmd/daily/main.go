@@ -158,7 +158,7 @@ LOOP:
 	slackReport, err := a.database.SlackReport().FindBySlackChannelAndDate(project.Fields.SlackID, time.Now())
 
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		a.logger.Error(err)
+		a.logger.WithField("project", project).Error(err)
 	}
 
 	var ts string
@@ -176,7 +176,7 @@ LOOP:
 	)
 
 	if err != nil {
-		a.logger.Error(err)
+		a.logger.WithField("project", project).Error(err)
 	}
 
 	if err := a.database.SlackReport().UpdateOrCreate(&model.SlackReport{
@@ -184,7 +184,7 @@ LOOP:
 		SlackChannelId: project.Fields.SlackID,
 		Ts:             ts,
 	}); err != nil {
-		a.logger.Error(err)
+		a.logger.WithField("project", project).Error(err)
 	}
 }
 
