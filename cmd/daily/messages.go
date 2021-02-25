@@ -49,6 +49,13 @@ func (a *App) SendSlackReportModal(callback *slack.InteractionCallback, report *
 		blockerMessage = report.Blocker
 	}
 
+	blockerInput := slack.NewTextAreaInput(
+		SIDailyReportBlocker,
+		"Расскажи, что тебе может помешать в твоей работе",
+		blockerMessage,
+	)
+	blockerInput.Optional = true
+
 	if err := a.slack.Client().OpenDialog(
 		callback.TriggerID,
 		slack.Dialog{
@@ -67,11 +74,7 @@ func (a *App) SendSlackReportModal(callback *slack.InteractionCallback, report *
 					"Опиши, что будешь делать сегодня",
 					willDoMessage,
 				),
-				slack.NewTextAreaInput(
-					SIDailyReportBlocker,
-					"Расскажи, что тебе может помешать в твоей работе",
-					blockerMessage,
-				),
+				blockerInput,
 			},
 			State: callback.ResponseURL,
 		},
