@@ -119,7 +119,7 @@ func (a *App) SendReports() error {
 	}
 
 	for _, project := range a.teamProjects {
-		go a.SendReportToProject(project)
+		a.SendReportToProject(project)
 	}
 
 	return nil
