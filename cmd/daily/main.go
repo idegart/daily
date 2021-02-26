@@ -74,11 +74,9 @@ func (a *App) SendInitialMessages() ([]model.User, error) {
 	}
 
 	for _, user := range a.users {
-		go func(user model.User) {
-			if err := a.SendSlackInitialMessageToUser(user); err != nil {
-				a.logger.Error(err)
-			}
-		}(user)
+		if err := a.SendSlackInitialMessageToUser(user); err != nil {
+			a.logger.Error(err)
+		}
 	}
 
 	return a.users, nil
