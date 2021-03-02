@@ -121,7 +121,7 @@ func (a *App) SendSlackReportToChannel(channelId string, users []model.User, bad
 	var ignoreText string
 
 	if len(badUsersIds) < 1 {
-		ignoreText = "*Все сегодня молодцы. Ни одного игнорирования*"
+		ignoreText = "*Все сегодня молодцы. Никто не проигнорировал*"
 	} else {
 		ignoreText = fmt.Sprintf("*Кто меня сегодня проигнорировал:*\n%s", strings.Join(badUsersIds, "\n"))
 	}
