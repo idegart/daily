@@ -176,18 +176,19 @@ func (a *App) SendSlackReportToChannel(channelId string, users []model.User, bad
 		}
 
 		reportMessage := fmt.Sprintf(
-			"*<https://proscomteam.slack.com/team/%s|%s>*\n```## Делал вчера: ##\n%s\n\n## Делает сегодня: ##\n%s",
+			"*<https://proscomteam.slack.com/team/%s|%s>*\n>*Вчера:*\n>%s\n>*Сегодня:*\n>%s",
 			user.SlackId,
 			user.Name,
-			report.Done,
-			report.WillDo,
+			strings.ReplaceAll( report.Done, "\n", "\n>"),
+			strings.ReplaceAll(report.WillDo, "\n", "\n>"),
 		)
 
 		if report.Blocker != "" {
-			reportMessage += fmt.Sprintf("\n\n## Блокеры: ##\n%s", report.Blocker)
+			reportMessage += fmt.Sprintf(
+				"\n>*Блокеры:*\n>%s",
+				strings.ReplaceAll( report.Blocker, "\n", "\n>"),
+			)
 		}
-
-		reportMessage += "```"
 
 		reportSection := slack.NewSectionBlock(
 			slack.NewTextBlockObject(
@@ -203,20 +204,20 @@ func (a *App) SendSlackReportToChannel(channelId string, users []model.User, bad
 		messageBlocks = append(messageBlocks, reportSection)
 	}
 
-	msg := slack.MsgOptionBlocks(messageBlocks...)
+	msg := slack.MsgOptionCompose(
+		slack.MsgOptionBlocks(messageBlocks...),
+	)
+
+	var reportBlockOptions []slack.MsgOption
+
+	reportBlockOptions = append(reportBlockOptions, msg)
 
 	if replace != "" {
-		s1, s2, _, err := a.slack.Client().UpdateMessage(
-			channelId,
-			replace,
-			msg,
-		)
-
-		return s1, s2, err
+		reportBlockOptions = append(reportBlockOptions, slack.MsgOptionUpdate(replace))
 	}
 
 	return a.slack.Client().PostMessage(
 		channelId,
-		msg,
+		reportBlockOptions...,
 	)
 }
