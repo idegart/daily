@@ -1,0 +1,1 @@
+ALTER TABLE users ADD emoji varchar(255) default ''

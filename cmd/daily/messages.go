@@ -176,9 +176,10 @@ func (a *App) SendSlackReportToChannel(channelId string, users []model.User, bad
 		}
 
 		reportMessage := fmt.Sprintf(
-			"*<https://proscomteam.slack.com/team/%s|%s>*\n*Вчера:*\n%s\n\n*Сегодня:*\n%s",
+			"<https://proscomteam.slack.com/team/%s|%s> %s\n*Вчера:*\n%s\n\n*Сегодня:*\n%s",
 			user.SlackId,
 			user.Name,
+			user.Emoji,
 			strings.Trim(report.Done, "\n"),
 			strings.Trim(report.WillDo, "\n"),
 		)
@@ -201,7 +202,7 @@ func (a *App) SendSlackReportToChannel(channelId string, users []model.User, bad
 			nil,
 		)
 
-		messageBlocks = append(messageBlocks, reportSection)
+		messageBlocks = append(messageBlocks, reportSection, slack.NewDividerBlock())
 	}
 
 	msg := slack.MsgOptionCompose(

@@ -56,6 +56,7 @@ func (r *UserRepository) UpdateOrCreate(user *model.User) error {
 	}
 
 	user.Id = userModel.Id
+	user.Emoji = userModel.Emoji
 
 	return r.Update(user)
 }
