@@ -74,7 +74,12 @@ func (a *App) SendInitialMessages() ([]model.User, error) {
 	}
 
 	for _, user := range a.users {
-		if err := a.SendSlackInitialMessageToUser(user); err != nil {
+		previousReport, err := a.database.DailyReport().FindByUserAndDate(user.Id, time.Now().Add(-24*time.Hour))
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			a.logger.Error(err)
+		}
+
+		if err := a.SendSlackInitialMessageToUser(user, previousReport); err != nil {
 			a.logger.Error(err)
 		}
 	}

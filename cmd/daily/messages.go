@@ -16,11 +16,18 @@ const (
 	SIDailyReportBlocker = "Blocker"
 )
 
-func (a *App) SendSlackInitialMessageToUser(user model.User) error {
+func (a *App) SendSlackInitialMessageToUser(user model.User, previousReport *model.DailyReport) error {
+	var text string
+
+	if previousReport != nil {
+		text = fmt.Sprintf("*Твои прошлые планы:*\n%s", previousReport.WillDo)
+	}
+
 	_, _, err := a.slack.Client().PostMessage(
 		user.SlackId,
 		slack.MsgOptionAttachments(slack.Attachment{
 			Pretext:    "Привет, настало время, чтобы рассказать чем ты занимаешься",
+			Text: text,
 			CallbackID: SIDailyReportCallbackStart,
 			Color:      "#3AA3E3",
 			Actions: []slack.AttachmentAction{

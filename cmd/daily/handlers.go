@@ -88,10 +88,10 @@ func handleSlackInteractiveCallback(a *App) http.HandlerFunc {
 			if user := a.GetUserBySlackId(interaction.User.ID); user != nil {
 				data := interaction.DialogSubmissionCallback.Submission
 				report := &model.DailyReport{
-					UserId: user.Id,
-					Date: time.Now(),
-					Done: data[SIDailyReportDone],
-					WillDo: data[SIDailyReportWillDo],
+					UserId:  user.Id,
+					Date:    time.Now(),
+					Done:    data[SIDailyReportDone],
+					WillDo:  data[SIDailyReportWillDo],
 					Blocker: data[SIDailyReportBlocker],
 				}
 				if err := a.database.DailyReport().UpdateOrCreate(report); err != nil {
