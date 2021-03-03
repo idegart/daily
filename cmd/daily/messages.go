@@ -176,7 +176,7 @@ func (a *App) SendSlackReportToChannel(channelId string, users []model.User, bad
 		}
 
 		reportMessage := fmt.Sprintf(
-			"*<https://slack.com/app_redirect?channel=%s|%s>*\n```## Делал вчера: ##\n%s\n\n## Делает сегодня: ##\n%s```",
+			"*<https://slack.com/app_redirect?channel=%s|%s>*\n```## Делал вчера: ##\n%s\n\n## Делает сегодня: ##\n%s",
 			user.SlackId,
 			user.Name,
 			report.Done,
@@ -186,6 +186,8 @@ func (a *App) SendSlackReportToChannel(channelId string, users []model.User, bad
 		if report.Blocker != "" {
 			reportMessage += fmt.Sprintf("\n\n## Блокеры: ##\n%s", report.Blocker)
 		}
+
+		reportMessage += "```"
 
 		reportSection := slack.NewSectionBlock(
 			slack.NewTextBlockObject(
