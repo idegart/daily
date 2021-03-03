@@ -176,24 +176,24 @@ func (a *App) SendSlackReportToChannel(channelId string, users []model.User, bad
 		}
 
 		reportMessage := fmt.Sprintf(
-			"*<https://proscomteam.slack.com/team/%s|%s>*\n>*Вчера:*\n>%s\n>*Сегодня:*\n>%s",
+			"*<https://proscomteam.slack.com/team/%s|%s>*\n*Вчера:*\n%s\n\n*Сегодня:*\n%s",
 			user.SlackId,
 			user.Name,
-			strings.ReplaceAll( report.Done, "\n", "\n>"),
-			strings.ReplaceAll(report.WillDo, "\n", "\n>"),
+			strings.Trim(report.Done, "\n"),
+			strings.Trim(report.WillDo, "\n"),
 		)
 
 		if report.Blocker != "" {
 			reportMessage += fmt.Sprintf(
-				"\n>*Блокеры:*\n>%s",
-				strings.ReplaceAll( report.Blocker, "\n", "\n>"),
+				"\n\n*Блокеры:*\n%s",
+				strings.Trim(report.Blocker, "\n"),
 			)
 		}
 
 		reportSection := slack.NewSectionBlock(
 			slack.NewTextBlockObject(
 				"mrkdwn",
-				reportMessage,
+				strings.ReplaceAll( reportMessage, "\n", "\n>"),
 				false,
 				false,
 			),
