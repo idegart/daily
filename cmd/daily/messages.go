@@ -107,10 +107,22 @@ func (a *App) SendSlackThanksForReport(callback *slack.InteractionCallback) {
 	}
 }
 
-
 func (a *App) SendSlackReportToChannel(channelId string, users []model.User, badUsers []model.User, reports []model.DailyReport, replace string) (string, string, error) {
-	headerText := slack.NewTextBlockObject("mrkdwn", "*Гайз, я тут подготовил ежедневный отчет. Чек зис аут*", false, false)
-	headerSection := slack.NewSectionBlock(headerText, nil, nil)
+	var messageBlocks []slack.Block
+
+	headerSection := slack.NewSectionBlock(
+		slack.NewTextBlockObject(
+			"mrkdwn",
+			"*Гайз, я тут подготовил ежедневный отчет. Чек зис аут*",
+			false,
+			false,
+		),
+		nil,
+		nil,
+	)
+
+	messageBlocks = append(messageBlocks, headerSection)
+	messageBlocks = append(messageBlocks, slack.NewDividerBlock())
 
 	var badUsersIds []string
 
@@ -126,17 +138,35 @@ func (a *App) SendSlackReportToChannel(channelId string, users []model.User, bad
 		ignoreText = fmt.Sprintf("*Кто меня сегодня проигнорировал:*\n%s", strings.Join(badUsersIds, "\n"))
 	}
 
-	ignoreTextBlock := slack.NewTextBlockObject(
-		"mrkdwn",
-		ignoreText,
-		false,
-		false)
-	ignoreSection := slack.NewSectionBlock(ignoreTextBlock, nil, nil)
+	ignoreSection := slack.NewSectionBlock(
+		slack.NewTextBlockObject(
+			"mrkdwn",
+			ignoreText,
+			false,
+			false,
+		),
+		nil,
+		nil,
+	)
 
-	reportsSlice := make([]*slack.TextBlockObject, 0)
+	messageBlocks = append(messageBlocks, ignoreSection)
+	messageBlocks = append(messageBlocks, slack.NewDividerBlock())
+
+	willDoSection := slack.NewSectionBlock(
+		slack.NewTextBlockObject(
+			"mrkdwn",
+			"*Что сегодня будет делать команда:*",
+			false,
+			false,
+		),
+		nil,
+		nil,
+	)
+
+	messageBlocks = append(messageBlocks, willDoSection)
+	messageBlocks = append(messageBlocks, slack.NewDividerBlock())
 
 	for _, report := range reports {
-
 		var user model.User
 
 		for _, u := range users {
@@ -146,36 +176,27 @@ func (a *App) SendSlackReportToChannel(channelId string, users []model.User, bad
 			}
 		}
 
-		reportField := slack.NewTextBlockObject(
-			"mrkdwn",
-			fmt.Sprintf(
-				"*%s*\n```Делал вчера:\n%s\n\nДелает сегодня:\n%s\n\nБлокеры:\n%s```",
-				user.Name,
-				report.Done,
-				report.WillDo,
-				report.Blocker,
+		reportSection := slack.NewSectionBlock(
+			slack.NewTextBlockObject(
+				"mrkdwn",
+				fmt.Sprintf(
+					"*%s*\n```Делал вчера:\n%s\n\nДелает сегодня:\n%s\n\nБлокеры:\n%s```",
+					user.Name,
+					report.Done,
+					report.WillDo,
+					report.Blocker,
+				),
+				false,
+				false,
 			),
-			false,
-			false,
+			nil,
+			nil,
 		)
 
-		reportsSlice = append(reportsSlice, reportField)
+		messageBlocks = append(messageBlocks, reportSection)
 	}
 
-	willDoText := slack.NewTextBlockObject("mrkdwn", "*Что сегодня будет делать команда:*", false, false)
-	reportsSection := slack.NewSectionBlock(willDoText, reportsSlice, nil)
-
-	msg := slack.MsgOptionBlocks(
-		headerSection,
-		slack.NewDividerBlock(),
-		ignoreSection,
-		slack.NewDividerBlock(),
-		reportsSection,
-	)
-
-	var options []slack.MsgOption
-
-	options = append(options, msg)
+	msg := slack.MsgOptionBlocks(messageBlocks...)
 
 	if replace != "" {
 		s1, s2, _, err := a.slack.Client().UpdateMessage(
@@ -189,6 +210,6 @@ func (a *App) SendSlackReportToChannel(channelId string, users []model.User, bad
 
 	return a.slack.Client().PostMessage(
 		channelId,
-		options...,
+		msg,
 	)
 }
