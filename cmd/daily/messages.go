@@ -164,7 +164,6 @@ func (a *App) SendSlackReportToChannel(channelId string, users []model.User, bad
 	)
 
 	messageBlocks = append(messageBlocks, willDoSection)
-	messageBlocks = append(messageBlocks, slack.NewDividerBlock())
 
 	for _, report := range reports {
 		var user model.User
@@ -176,16 +175,22 @@ func (a *App) SendSlackReportToChannel(channelId string, users []model.User, bad
 			}
 		}
 
+		reportMessage := fmt.Sprintf(
+			"*<https://slack.com/app_redirect?channel=%s|%s>*\n```## Делал вчера: ##\n%s\n\n## Делает сегодня: ##\n%s```",
+			user.SlackId,
+			user.Name,
+			report.Done,
+			report.WillDo,
+		)
+
+		if report.Blocker != "" {
+			reportMessage += fmt.Sprintf("\n\n## Блокеры: ##\n%s", report.Blocker)
+		}
+
 		reportSection := slack.NewSectionBlock(
 			slack.NewTextBlockObject(
 				"mrkdwn",
-				fmt.Sprintf(
-					"*%s*\n```Делал вчера:\n%s\n\nДелает сегодня:\n%s\n\nБлокеры:\n%s```",
-					user.Name,
-					report.Done,
-					report.WillDo,
-					report.Blocker,
-				),
+				reportMessage,
 				false,
 				false,
 			),
