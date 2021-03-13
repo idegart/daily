@@ -6,4 +6,6 @@ type Database interface {
 	User() UserRepository
 	DailyReport() DailyReportRepository
 	SlackReport() SlackReportRepository
+	AbsentUser() AbsentUserRepository
+	Project() ProjectRepository
 }

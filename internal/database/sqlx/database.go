@@ -19,6 +19,8 @@ type Database struct {
 	userRepository        *UserRepository
 	dailyReportRepository *DailyReportRepository
 	slackReportRepository *SlackReportRepository
+	absentUserRepository  *AbsentUserRepository
+	projectRepository     *ProjectRepository
 }
 
 func New(config *config.DB, logger *logrus.Logger) *Database {
@@ -119,4 +121,24 @@ func (d *Database) SlackReport() database.SlackReportRepository {
 	}
 
 	return d.slackReportRepository
+}
+
+func (d *Database) AbsentUser() database.AbsentUserRepository {
+	if d.absentUserRepository == nil {
+		d.absentUserRepository = &AbsentUserRepository{
+			db: d.db,
+		}
+	}
+
+	return d.absentUserRepository
+}
+
+func (d *Database) Project() database.ProjectRepository {
+	if d.projectRepository == nil {
+		d.projectRepository = &ProjectRepository{
+			db: d.db,
+		}
+	}
+
+	return d.projectRepository
 }

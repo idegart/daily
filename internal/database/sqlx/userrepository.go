@@ -1,6 +1,7 @@
 package sqlx
 
 import (
+	"bot/internal/external/airtable"
 	"bot/internal/model"
 	"database/sql"
 	"errors"
@@ -60,3 +61,25 @@ func (r *UserRepository) UpdateOrCreate(user *model.User) error {
 
 	return r.Update(user)
 }
+
+func (r *UserRepository) GenerateFromAirtable(airUsers []airtable.User) ([]model.User, error) {
+	var users []model.User
+
+	for _, airtableUser := range airUsers{
+		user := &model.User{
+			Name: airtableUser.Fields.Name,
+			Email: airtableUser.Fields.Email,
+			AirtableId: airtableUser.Fields.ID,
+			SlackId: airtableUser.Fields.SlackUserID,
+		}
+
+		if err := r.UpdateOrCreate(user); err != nil {
+			return nil, err
+		}
+
+		users = append(users, *user)
+	}
+
+	return users, nil
+}
+

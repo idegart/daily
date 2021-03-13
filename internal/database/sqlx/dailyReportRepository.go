@@ -96,3 +96,17 @@ func (r *DailyReportRepository) UpdateOrCreate(report *model.DailyReport) error 
 
 	return r.Update(report)
 }
+
+func (r *DailyReportRepository) GetLastUserReport(userId int) (*model.DailyReport, error) {
+	var dailyReport model.DailyReport
+
+	if err := r.db.Get(
+		&dailyReport,
+		"SELECT * FROM daily_user_reports WHERE user_id=$1 and date::date != now()::date order by date desc",
+		userId,
+	); err != nil {
+		return nil, err
+	}
+
+	return &dailyReport, nil
+}

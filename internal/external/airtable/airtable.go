@@ -7,41 +7,8 @@ import (
 	"strings"
 )
 
-type Project struct {
-	airtable.Record
-	Fields struct {
-		ID           int
-		Project      string
-		Status       string
-		Designer     []string
-		SlackID      string `json:"Slack ID"`
-		SlackUsersID string `json:"DailyBot Summary"`
-	}
-}
-
-type User struct {
-	airtable.Record
-	Fields struct {
-		ID          int
-		Name        string
-		Email       string
-		Phone       string
-		Status      string
-		SlackUserID string `json:"Slack User ID"`
-	}
-}
-
-type Active struct {
-	config *ActiveConfig
-
-	users    []User
-	projects []Project
-}
-
-type Infographics struct {
-	config *InfographicsConfig
-
-	users []User
+type airtableApp struct {
+	appID string
 }
 
 type Airtable struct {
@@ -49,8 +16,8 @@ type Airtable struct {
 	logger *logrus.Logger
 	client *airtable.Client
 
-	active       *Active
-	infographics *Infographics
+	team     airtableApp
+	projects airtableApp
 }
 
 func NewAirtable(config *config.Airtable, logger *logrus.Logger) *Airtable {
@@ -59,20 +26,19 @@ func NewAirtable(config *config.Airtable, logger *logrus.Logger) *Airtable {
 		config: config,
 		client: &airtable.Client{
 			APIKey: config.ApiKey,
-			BaseID: config.AppId,
 		},
 	}
 }
 
-func (a *Airtable) SetupActive(config *ActiveConfig) {
-	a.active = &Active{
-		config: config,
+func (a *Airtable) SetupTeam(appID string) {
+	a.team = airtableApp{
+		appID: appID,
 	}
 }
 
-func (a *Airtable) SetupInfographics(config *InfographicsConfig) {
-	a.infographics = &Infographics{
-		config: config,
+func (a *Airtable) SetupProjects(appID string) {
+	a.projects = airtableApp{
+		appID: appID,
 	}
 }
 

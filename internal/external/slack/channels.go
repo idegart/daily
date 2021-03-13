@@ -4,11 +4,7 @@ import (
 	"github.com/slack-go/slack"
 )
 
-func (s *Slack) GetChannels(force bool) ([]slack.Channel, error) {
-	if !force && s.channels != nil {
-		return s.channels, nil
-	}
-
+func (s *Slack) GetChannels() ([]slack.Channel, error) {
 	s.logger.Info("Load slack channels")
 
 	var channels []slack.Channel
@@ -35,42 +31,29 @@ func (s *Slack) GetChannels(force bool) ([]slack.Channel, error) {
 		cursor = c
 	}
 
-	s.channels = channels
+	s.logger.Info("Total slack channels: ", len(channels))
 
-	s.logger.Info("Total slack channels: ", len(s.channels))
-
-	return s.channels, nil
+	return channels, nil
 }
 
-func (s *Slack) GetActiveProjectChannels(force bool) ([]slack.Channel, error) {
-	if !force && s.activeChannels != nil {
-		return s.activeChannels, nil
+func (s *Slack) GetActiveProjectChannels() ([]slack.Channel, error) {
+	var activeChannels []slack.Channel
+	channels, err := s.GetChannels()
+
+	if err != nil {
+		 return nil, err
 	}
 
-	if s.channels == nil {
-		if _, err := s.GetChannels(force); err != nil {
-			return nil, err
-		}
-	}
-
-	var channels []slack.Channel
-
-	for i := range s.channels {
-		//m, err := regexp.MatchString(`^(p\d{4}-|bot-test)`, s.channels[i].Name)
+	for i := range channels {
 		//m, err := regexp.MatchString(`^id-732-fullhouse`, s.channels[i].Name)
-
-		//if err != nil {
-		//	return nil, err
-		//}
-
-		if !s.channels[i].IsArchived {
-			channels = append(channels, s.channels[i])
+		if !channels[i].IsArchived {
+			activeChannels = append(activeChannels, channels[i])
 		}
 	}
 
-	s.activeChannels = channels
+	activeChannels = channels
 
-	s.logger.Info("Total active slack channels: ", len(s.activeChannels))
+	s.logger.Info("Total active slack channels: ", activeChannels)
 
-	return s.activeChannels, nil
+	return activeChannels, nil
 }

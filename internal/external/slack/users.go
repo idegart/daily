@@ -2,32 +2,22 @@ package slack
 
 import "github.com/slack-go/slack"
 
-func (s *Slack) GetUsers(force bool) ([]slack.User, error)  {
-	if !force && s.users != nil {
-		return s.users, nil
-	}
-
+func (s *Slack) GetUsers() ([]slack.User, error) {
 	s.logger.Info("Load slack users")
 
 	users, err := s.client.GetUsers()
-
-	s.logger.Info("Total slack users: ", len(users))
 
 	if err != nil {
 		return nil, err
 	}
 
-	s.users = users
+	s.logger.Info("Total slack users: ", len(users))
 
-	return s.users, nil
+	return users, nil
 }
 
-func (s *Slack) GetActiveUsers(force bool) ([]slack.User, error) {
-	if !force && s.activeUsers != nil {
-		return s.activeUsers, nil
-	}
-
-	users, err := s.GetUsers(force)
+func (s *Slack) GetActiveUsers() ([]slack.User, error) {
+	users, err := s.GetUsers()
 
 	if err != nil {
 		return nil, err
@@ -41,40 +31,38 @@ func (s *Slack) GetActiveUsers(force bool) ([]slack.User, error) {
 		}
 	}
 
-	s.activeUsers = activeUsers
+	s.logger.Info("Total active slack users: ", len(activeUsers))
 
-	s.logger.Info("Total active slack users: ", len(s.activeUsers))
-
-	return s.activeUsers, nil
+	return activeUsers, nil
 }
 
-func (s *Slack) GetActiveUsersInChannel(channelId string) ([]slack.User, error)  {
-	if s.activeUsers == nil {
-		if _, err := s.GetActiveUsers(true); err != nil {
-			return nil, err
-		}
-	}
-
-	params := slack.GetUsersInConversationParameters{
-		ChannelID: channelId,
-		Limit:     100,
-	}
-
-	userIds, _, err := s.Client().GetUsersInConversation(&params)
-
-	if err != nil {
-		return nil, err
-	}
-
-	var users []slack.User
-
-	for _, id := range userIds {
-		for i := range s.activeUsers {
-			if s.activeUsers[i].ID == id {
-				users = append(users, s.activeUsers[i])
-			}
-		}
-	}
-
-	return users, nil
-}
+//func (s *Slack) GetActiveUsersInChannel(channelId string) ([]slack.User, error) {
+//	activeUsers, err := s.GetActiveUsers()
+//
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	params := slack.GetUsersInConversationParameters{
+//		ChannelID: channelId,
+//		Limit:     100,
+//	}
+//
+//	userIds, _, err := s.Client().GetUsersInConversation(&params)
+//
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	var users []slack.User
+//
+//	for _, id := range userIds {
+//		for i := range activeUsers {
+//			if activeUsers[i].ID == id {
+//				users = append(users, activeUsers[i])
+//			}
+//		}
+//	}
+//
+//	return users, nil
+//}
