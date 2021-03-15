@@ -27,6 +27,7 @@ type DailyReportRepository interface {
 type SlackReportRepository interface {
 	Create(report *model.SlackReport) error
 	Update(report *model.SlackReport) error
+	GetAllByDate(time time.Time) ([]model.SlackReport, error)
 	FindBySlackChannelAndDate(slackChannelId string, time time.Time) (*model.SlackReport, error)
 	UpdateOrCreate(report *model.SlackReport) error
 }

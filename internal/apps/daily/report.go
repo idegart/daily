@@ -24,6 +24,22 @@ func (d *Daily) StartReport() error {
 	return nil
 }
 
+func (d Daily) DropReports() error {
+	d.logger.Info("Drop reports")
+
+	reports, err  := d.database.SlackReport().GetAllByDate(time.Now())
+
+	if err != nil {
+		return err
+	}
+
+	for _, report := range reports {
+		d.slack.Client().DeleteMessage(report.SlackChannelId, report.Ts)
+	}
+
+	return nil
+}
+
 func (d *Daily) SendUpdatingReportByUser(user model.User) {
 	for _, project := range d.projects {
 		for _, u := range project.Users {

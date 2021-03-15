@@ -30,6 +30,16 @@ func (r *SlackReportRepository) Update(report *model.SlackReport) error {
 	return err
 }
 
+func (r *SlackReportRepository) GetAllByDate(time time.Time) ([]model.SlackReport, error) {
+	var reports []model.SlackReport
+
+	if err := r.db.Select(&reports, "SELECT * FROM daily_slack_reports WHERE date=$1", time); err != nil {
+		return nil, err
+	}
+
+	return reports, nil
+}
+
 func (r *SlackReportRepository) FindBySlackChannelAndDate(slackChannelId string, time time.Time) (*model.SlackReport, error) {
 	var slackReport model.SlackReport
 
