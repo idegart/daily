@@ -4,6 +4,7 @@ import (
 	"bot/internal/model"
 	"bot/internal/server"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -16,7 +17,7 @@ func (d *Daily) configureServer() {
 	d.server.Router().HandleFunc("/callback/interactive", handleSlackInteractiveCallback(d))
 
 	secure := d.server.Router().PathPrefix("/secure").Subrouter()
-	secure.Use(authenticationMiddleware)
+	secure.Use(authenticationMiddleware, holidayMiddleware(d))
 
 	secure.HandleFunc("/start-daily", handleStartDaily(d))
 	secure.HandleFunc("/send-reports", handleSendReports(d))
@@ -34,6 +35,26 @@ func authenticationMiddleware(next http.Handler) http.Handler {
 			http.Error(w, "Forbidden", http.StatusForbidden)
 		}
 	})
+}
+func holidayMiddleware(d *Daily) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			holiday, err := d.airtable.TodayIsHoliday()
+
+			if err != nil {
+				d.logger.Error(err)
+				http.Error(w, err.Error(), http.StatusBadGateway)
+				return
+			}
+
+			if holiday != "" {
+				http.Error(w, fmt.Sprintf("Today is holiday (%s)", holiday), http.StatusForbidden)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 func handleHealth(d *Daily) http.HandlerFunc {
@@ -74,9 +95,7 @@ func handleStartDaily(d *Daily) http.HandlerFunc {
 			TotalAbsentUsers: len(d.absentUsers),
 		}
 
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			d.logger.Error(err)
-		}
+		sendResponse(d, w, response)
 	}
 }
 
@@ -98,9 +117,7 @@ func handleSendReports(d *Daily) http.HandlerFunc {
 			TotalAbsentUsers: len(d.absentUsers),
 		}
 
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			d.logger.Error(err)
-		}
+		sendResponse(d, w, response)
 	}
 }
 
@@ -187,5 +204,11 @@ func handleSlackInteractiveCallback(d *Daily) http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusInternalServerError)
+	}
+}
+
+func sendResponse(d *Daily, w http.ResponseWriter, response interface{}) {
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		d.logger.Error(err)
 	}
 }
