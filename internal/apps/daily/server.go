@@ -21,6 +21,7 @@ func (d *Daily) configureServer() {
 	secure.HandleFunc("/start-daily", handleStartDaily(d))
 	secure.HandleFunc("/send-reports", handleSendReports(d))
 	secure.HandleFunc("/drop-reports", handleDropReports(d))
+	secure.HandleFunc("/go-smoke", handleGoSmoke(d))
 }
 
 func authenticationMiddleware(next http.Handler) http.Handler {
@@ -108,11 +109,29 @@ func handleDropReports(d *Daily) http.HandlerFunc {
 		err := d.DropReports()
 
 		var response = struct {
-			Ok               bool  `json:"ok"`
-			Error            error `json:"error"`
+			Ok    bool  `json:"ok"`
+			Error error `json:"error"`
 		}{
-			Ok:               err == nil,
-			Error:            err,
+			Ok:    err == nil,
+			Error: err,
+		}
+
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			d.logger.Error(err)
+		}
+	}
+}
+
+func handleGoSmoke(d *Daily) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := d.GoSmoke()
+
+		var response = struct {
+			Ok    bool  `json:"ok"`
+			Error error `json:"error"`
+		}{
+			Ok:    err == nil,
+			Error: err,
 		}
 
 		if err := json.NewEncoder(w).Encode(response); err != nil {
