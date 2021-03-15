@@ -7,12 +7,12 @@ import (
 
 func (d *Daily) GoSmoke() error {
 	messageOptions := []slack.MsgOption{
-		slack.MsgOptionText("Пора покурить", false),
+		slack.MsgOptionText("Пора покурить (или нет)", false),
 		slack.MsgOptionBlocks(
 			slack.NewSectionBlock(
 				slack.NewTextBlockObject(
 					"mrkdwn",
-					"*🚬🤖 Пора покурить*",
+					"*🚬🤖 Бот сказал - пора курить. (или нет)*",
 					false,
 					false,
 				),
@@ -23,7 +23,7 @@ func (d *Daily) GoSmoke() error {
 				"",
 				slack.NewTextBlockObject(
 					"mrkdwn",
-					"🔞 Покурение вредит Вашему здоровью 🚭",
+					"🔞 Курение вредит Вашему здоровью 🚭",
 					false,
 					false,
 				),
