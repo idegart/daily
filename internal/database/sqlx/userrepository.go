@@ -66,6 +66,10 @@ func (r *UserRepository) GenerateFromAirtable(airUsers []airtable.User) ([]model
 	var users []model.User
 
 	for _, airtableUser := range airUsers{
+		if airtableUser.Fields.SlackUserID == "" {
+			continue
+		}
+
 		user := &model.User{
 			Name: airtableUser.Fields.Name,
 			Email: airtableUser.Fields.Email,
