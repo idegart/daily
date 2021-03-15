@@ -30,7 +30,7 @@ func (d *Daily) SendUpdatingReportByUser(user model.User) {
 			if u.Id == user.Id {
 				_, err := d.database.SlackReport().FindBySlackChannelAndDate(project.SlackId, time.Now())
 
-				if err != nil {
+				if err == nil {
 					d.SendReportToProject(project)
 				}
 			}
