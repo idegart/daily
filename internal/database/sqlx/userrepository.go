@@ -73,7 +73,7 @@ func (r *UserRepository) GenerateFromAirtable(airUsers []airtable.User) ([]model
 		user := &model.User{
 			Name: airtableUser.Fields.Name,
 			Email: airtableUser.Fields.Email,
-			AirtableId: &airtableUser.Fields.ID,
+			AirtableId: airtableUser.Fields.ID,
 			SlackId: airtableUser.Fields.SlackUserID,
 		}
 
