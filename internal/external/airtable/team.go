@@ -65,7 +65,7 @@ func (a *Airtable) GetAbsentUsersForDate(t time.Time) ([]AbsentUser, error) {
 	var todayAbsent []AbsentUser
 
 	for _, user := range users {
-		if user.Date().Equal(t) {
+		if t.Format("2006-01-02") == user.Date().Format("2006-01-02") {
 			todayAbsent = append(todayAbsent, user)
 		}
 	}

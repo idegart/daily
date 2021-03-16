@@ -44,7 +44,7 @@ func (r *AbsentUserRepository) GenerateFromAirtableForDate(airUsers []airtable.A
 		return nil, err
 	}
 
-	LOOP:
+LOOP:
 	for _, airUser := range airUsers {
 		for _, user := range users {
 			if airUser.Email() != user.Email {
