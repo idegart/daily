@@ -13,16 +13,17 @@ type User struct {
 		Email       string
 		Phone       string
 		Status      string
-		SlackUserID string `json:"Slack User ID"`
+		SlackUserID string   `json:"Slack User ID"`
+		Unit        []string `json:"Unit (from Role)"`
 	}
 }
 
 type AbsentUser struct {
 	airtable.Record
 	Fields struct {
-		Date        string `json:"Date"`
-		Email       []string  `json:"Email (from Me In Team)"`
-		SlackUserID []string  `json:"Slack User ID (from Me In Team)"`
+		Date        string   `json:"Date"`
+		Email       []string `json:"Email (from Me In Team)"`
+		SlackUserID []string `json:"Slack User ID (from Me In Team)"`
 	}
 }
 
@@ -92,6 +93,10 @@ func (a *Airtable) GetAbsentUsers() ([]AbsentUser, error) {
 	a.logger.Info("Total absent airtable users: ", len(users))
 
 	return users, nil
+}
+
+func (u User) IsInfographics() bool {
+	return u.Fields.Unit[0] == "Infographic"
 }
 
 func (u AbsentUser) Email() string {

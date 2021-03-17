@@ -24,7 +24,7 @@ func (r *UserRepository) Create(user *model.User) error {
 
 func (r *UserRepository) Update(user *model.User) error {
 	_, err := r.db.NamedExec(
-		"UPDATE users SET email=:email, name=:name, airtable_id=:airtable_id, slack_id=:slack_id, updated_at = now() WHERE id=:id",
+		"UPDATE users SET email=:email, name=:name, airtable_id=:airtable_id, slack_id=:slack_id, is_infographic=:is_infographic, updated_at = now() WHERE id=:id",
 		user,
 	)
 
@@ -75,6 +75,7 @@ func (r *UserRepository) GenerateFromAirtable(airUsers []airtable.User) ([]model
 			Email: airtableUser.Fields.Email,
 			AirtableId: airtableUser.Fields.ID,
 			SlackId: airtableUser.Fields.SlackUserID,
+			IsInfographic: airtableUser.IsInfographics(),
 		}
 
 		if err := r.UpdateOrCreate(user); err != nil {
@@ -92,7 +93,7 @@ func (r *UserRepository) GetInfographicsUsers() ([]model.User, error) {
 
 	if err := r.db.Select(
 		&users,
-		"SELECT DISTINCT u.* FROM users u INNER JOIN project_users pu on u.id = pu.user_id INNER JOIN projects p on pu.project_id = p.id WHERE p.is_infographics = true",
+		"SELECT * FROM users WHERE is_infographic = true",
 	); err != nil {
 		return nil, err
 	}

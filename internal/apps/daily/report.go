@@ -23,6 +23,10 @@ func (d *Daily) StartReport() error {
 		d.projectsToReport <- project
 	}
 
+	if err := d.SendReportToInfographics(); err != nil {
+		d.logger.Error(err)
+	}
+
 	return nil
 }
 
@@ -36,13 +40,21 @@ func (d Daily) DropReports() error {
 	}
 
 	for _, report := range reports {
-		d.slack.Client().DeleteMessage(report.SlackChannelId, report.Ts)
+		if _, _, err := d.slack.Client().DeleteMessage(report.SlackChannelId, report.Ts); err != nil {
+			d.logger.Error(err)
+		}
 	}
 
 	return nil
 }
 
 func (d *Daily) SendUpdatingReportByUser(user model.User) {
+	if user.IsInfographic {
+		if err := d.SendReportToInfographics(); err != nil {
+			d.logger.Error(err)
+		}
+	}
+
 	for _, project := range d.projects {
 		for _, u := range project.Users {
 			if u.Id == user.Id {
@@ -58,13 +70,6 @@ func (d *Daily) SendUpdatingReportByUser(user model.User) {
 
 func (d *Daily) startSendingReports()  {
 	for project := range d.projectsToReport {
-		if project.IsInfographics {
-			if err := d.SendReportToInfographics(); err != nil {
-				d.logger.Error(err)
-			}
-			continue
-		}
-
 		if err := d.SendReportToProject(project); err != nil {
 			d.logger.Error(err)
 		}
@@ -111,16 +116,14 @@ func (d *Daily) SendReportToProject(project model.Project) error {
 func (d *Daily) SendReportToInfographics() error {
 	d.logger.Infof("Sending report to Infographics")
 
-	users, err := d.database.User().GetInfographicsUsers()
-
-	if err != nil {
-		return err
-	}
-
 	var ids []int
+	var users []model.User
 
-	for _, user := range users {
-		ids = append(ids, user.Id)
+	for _, user := range d.users {
+		if user.IsInfographic {
+			ids = append(ids, user.Id)
+			users = append(users, user)
+		}
 	}
 
 	reports, err := d.database.DailyReport().FindByUsersAndDate(ids, time.Now())
