@@ -8,6 +8,7 @@ type Project struct {
 		ID           string `json:"ID Auto"`
 		Project      string
 		Status       string
+		Type         string
 		SlackID      string `json:"Slack ID"`
 		SlackUsersID string `json:"DailyBot Summary"`
 	}

@@ -56,6 +56,11 @@ func (d *Daily) SendUpdatingReportByUser(user model.User) {
 
 func (d *Daily) startSendingReports()  {
 	for project := range d.projectsToReport {
+		if project.IsInfographics {
+			d.logger.Warnf("Not to send report to Infographics projects (%v)", project.Id)
+			continue
+		}
+
 		d.SendReportToProject(project)
 	}
 }

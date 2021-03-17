@@ -50,6 +50,7 @@ LOOP:
 	for i := range airProjects {
 		for j := range projects {
 			if projects[j].AirtableId == airProjects[i].Fields.ID {
+				projects[j].IsInfographics = airProjects[i].Fields.Type == "Infographics"
 				if err := r.Update(&projects[j]); err != nil {
 					return nil, err
 				}
@@ -61,7 +62,7 @@ LOOP:
 			Name:           airProjects[i].Fields.Project,
 			AirtableId:     airProjects[i].Fields.ID,
 			SlackId:        airProjects[i].Fields.SlackID,
-			IsInfographics: false,
+			IsInfographics: airProjects[i].Fields.Type == "Infographics",
 		}
 
 		if err := r.Create(project); err != nil {
