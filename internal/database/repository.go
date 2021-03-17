@@ -12,6 +12,7 @@ type UserRepository interface {
 	FindByEmail(email string) (*model.User, error)
 	UpdateOrCreate(user *model.User) error
 	GenerateFromAirtable(airUsers []airtable.User) ([]model.User, error)
+	GetInfographicsUsers() ([]model.User, error)
 }
 
 type DailyReportRepository interface {

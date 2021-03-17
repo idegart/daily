@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+const InfographicsSlackId = "C01HPPN012P"
+
 func (d *Daily) StartReport() error {
 	d.logger.Info("Start report")
 
@@ -47,7 +49,7 @@ func (d *Daily) SendUpdatingReportByUser(user model.User) {
 				_, err := d.database.SlackReport().FindBySlackChannelAndDate(project.SlackId, time.Now())
 
 				if err == nil {
-					d.SendReportToProject(project)
+					d.projectsToReport <- project
 				}
 			}
 		}
@@ -57,11 +59,15 @@ func (d *Daily) SendUpdatingReportByUser(user model.User) {
 func (d *Daily) startSendingReports()  {
 	for project := range d.projectsToReport {
 		if project.IsInfographics {
-			d.logger.Warnf("Not to send report to Infographics projects (%v)", project.Id)
+			if err := d.SendReportToInfographics(); err != nil {
+				d.logger.Error(err)
+			}
 			continue
 		}
 
-		d.SendReportToProject(project)
+		if err := d.SendReportToProject(project); err != nil {
+			d.logger.Error(err)
+		}
 	}
 }
 
@@ -102,6 +108,82 @@ func (d *Daily) SendReportToProject(project model.Project) error {
 	return nil
 }
 
+func (d *Daily) SendReportToInfographics() error {
+	d.logger.Infof("Sending report to Infographics")
+
+	users, err := d.database.User().GetInfographicsUsers()
+
+	if err != nil {
+		return err
+	}
+
+	var ids []int
+
+	for _, user := range users {
+		ids = append(ids, user.Id)
+	}
+
+	reports, err := d.database.DailyReport().FindByUsersAndDate(ids, time.Now())
+
+	if err != nil {
+		return err
+	}
+
+	var replaceTS string
+
+	slackReport, err := d.database.SlackReport().FindBySlackChannelAndDate(InfographicsSlackId, time.Now())
+
+	if err != nil {
+		return err
+	}
+
+	if slackReport != nil {
+		replaceTS = slackReport.Ts
+	}
+
+	d.sendSlackReportToInfographics(users, reports, replaceTS)
+
+	return nil
+}
+
+func (d Daily) sendSlackReportToInfographics(users []model.User, reports []model.DailyReport, replace string)  {
+	messageBlocks := []slack.Block{
+		getHeaderSection(),
+		slack.NewDividerBlock(),
+		getWillDoSection(),
+	}
+
+	messageBlocks = append(messageBlocks, getReportsSection(users, reports)...)
+
+	msg := slack.MsgOptionCompose(
+		slack.MsgOptionText("Отчет для Инфографики", false),
+		slack.MsgOptionBlocks(messageBlocks...),
+	)
+
+	var reportBlockOptions []slack.MsgOption
+
+	reportBlockOptions = append(reportBlockOptions, msg)
+
+	if replace != "" {
+		reportBlockOptions = append(reportBlockOptions, slack.MsgOptionUpdate(replace))
+	}
+
+	d.slack.SendMessage(
+		InfographicsSlackId,
+		func(ts string) {
+			report := &model.SlackReport{
+				SlackChannelId: InfographicsSlackId,
+				Ts: ts,
+				Date: time.Now(),
+			}
+			if err := d.database.SlackReport().UpdateOrCreate(report); err != nil {
+				d.logger.Error(err)
+			}
+		},
+		reportBlockOptions...,
+	)
+}
+
 func (d *Daily) sendSlackReportToChannel(channelId string, project model.Project, reports []model.DailyReport, replace string) {
 	messageBlocks := []slack.Block{
 		getHeaderSection(),
@@ -113,7 +195,7 @@ func (d *Daily) sendSlackReportToChannel(channelId string, project model.Project
 		getWillDoSection(),
 	}
 
-	messageBlocks = append(messageBlocks, getReportsSection(project, reports)...)
+	messageBlocks = append(messageBlocks, getReportsSection(project.Users, reports)...)
 	messageBlocks = append(messageBlocks, slack.NewDividerBlock())
 
 	msg := slack.MsgOptionCompose(
@@ -248,13 +330,13 @@ func getWillDoSection() *slack.SectionBlock {
 	)
 }
 
-func getReportsSection(project model.Project, reports []model.DailyReport) []slack.Block {
+func getReportsSection(users []model.User, reports []model.DailyReport) []slack.Block {
 	var reportsBlocks []slack.Block
 
 	for _, report := range reports {
 		var user model.User
 
-		for _, u := range project.Users {
+		for _, u := range users {
 			if u.Id == report.UserId {
 				user = u
 				break

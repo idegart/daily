@@ -87,3 +87,16 @@ func (r *UserRepository) GenerateFromAirtable(airUsers []airtable.User) ([]model
 	return users, nil
 }
 
+func (r *UserRepository) GetInfographicsUsers() ([]model.User, error) {
+	var users []model.User
+
+	if err := r.db.Select(
+		&users,
+		"SELECT DISTINCT u.* FROM users u INNER JOIN project_users pu on u.id = pu.user_id INNER JOIN projects p on pu.project_id = p.id WHERE p.is_infographics = true",
+	); err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
