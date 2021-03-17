@@ -133,8 +133,8 @@ func (d *Daily) SendReportToInfographics() error {
 
 	slackReport, err := d.database.SlackReport().FindBySlackChannelAndDate(InfographicsSlackId, time.Now())
 
-	if err != nil {
-		return err
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		d.logger.Error(err)
 	}
 
 	if slackReport != nil {
