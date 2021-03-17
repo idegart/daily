@@ -12,7 +12,7 @@ func (d *Daily) GoSmoke() error {
 			slack.NewSectionBlock(
 				slack.NewTextBlockObject(
 					"mrkdwn",
-					"*🚬🤖 Бот сказал - пора курить. (или нет)*",
+					"*🚬🤖 @channel Бот сказал - пора курить. (или нет)*",
 					false,
 					false,
 				),
