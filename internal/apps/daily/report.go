@@ -157,6 +157,10 @@ func (d Daily) sendSlackReportToInfographics(users []model.User, reports []model
 	messageBlocks := []slack.Block{
 		getHeaderSection(),
 		slack.NewDividerBlock(),
+		getAbsentSection(users, d.absentUsers),
+		slack.NewDividerBlock(),
+		getIgnoreSection(users, d.absentUsers, reports),
+		slack.NewDividerBlock(),
 		getWillDoSection(),
 	}
 
@@ -195,9 +199,9 @@ func (d *Daily) sendSlackReportToChannel(channelId string, project model.Project
 	messageBlocks := []slack.Block{
 		getHeaderSection(),
 		slack.NewDividerBlock(),
-		getAbsentSection(project, d.absentUsers),
+		getAbsentSection(project.Users, d.absentUsers),
 		slack.NewDividerBlock(),
-		getIgnoreSection(project, d.absentUsers, reports),
+		getIgnoreSection(project.Users, d.absentUsers, reports),
 		slack.NewDividerBlock(),
 		getWillDoSection(),
 	}
@@ -247,11 +251,11 @@ func getHeaderSection() *slack.SectionBlock {
 	)
 }
 
-func getAbsentSection(project model.Project, absentUsers []model.AbsentUser) *slack.SectionBlock  {
+func getAbsentSection(users []model.User, absentUsers []model.AbsentUser) *slack.SectionBlock  {
 	var projectAbsents []model.User
 	absentText := "*👨‍👧Кто сегодня отсутствует:*\n"
 
-	for _, user := range project.Users {
+	for _, user := range users {
 		for _, absentUser := range absentUsers {
 			if absentUser.UserId == user.Id {
 				projectAbsents = append(projectAbsents, user)
@@ -284,11 +288,11 @@ func getAbsentSection(project model.Project, absentUsers []model.AbsentUser) *sl
 	)
 }
 
-func getIgnoreSection(project model.Project, absentUsers []model.AbsentUser, reports []model.DailyReport) *slack.SectionBlock {
+func getIgnoreSection(users []model.User, absentUsers []model.AbsentUser, reports []model.DailyReport) *slack.SectionBlock {
 	var badUsersIds []string
 
 	LOOP:
-	for _, user := range project.Users {
+	for _, user := range users {
 		for _, absentUser := range absentUsers {
 			if absentUser.UserId == user.Id {
 				continue LOOP
