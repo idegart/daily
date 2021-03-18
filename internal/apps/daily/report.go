@@ -50,8 +50,11 @@ func (d Daily) DropReports() error {
 
 func (d *Daily) SendUpdatingReportByUser(user model.User) {
 	if user.IsInfographic {
-		if err := d.SendReportToInfographics(); err != nil {
-			d.logger.Error(err)
+		_, err := d.database.SlackReport().FindBySlackChannelAndDate(InfographicsSlackId, time.Now())
+		if err == nil {
+			if err := d.SendReportToInfographics(); err != nil {
+				d.logger.Error(err)
+			}
 		}
 	}
 
@@ -70,6 +73,10 @@ func (d *Daily) SendUpdatingReportByUser(user model.User) {
 
 func (d *Daily) startSendingReports()  {
 	for project := range d.projectsToReport {
+		if project.IsInfographics {
+			continue
+		}
+
 		if err := d.SendReportToProject(project); err != nil {
 			d.logger.Error(err)
 		}
