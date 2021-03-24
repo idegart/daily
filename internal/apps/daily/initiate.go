@@ -72,11 +72,11 @@ func (d *Daily) sendSlackInitialMessageToUser(user model.User, previousReport *m
 	headerText := "*🤖 Привет, настало время, чтобы рассказать о том, чем занимаешься*"
 
 	actionButton := slack.AttachmentAction{
-			Name:  "accept",
-			Text:  "Рассказать",
-			Style: "primary",
-			Type:  "button",
-			Value: "accept",
+		Name:  "accept",
+		Text:  "Рассказать",
+		Style: "primary",
+		Type:  "button",
+		Value: "accept",
 	}
 
 	if currentReport != nil {
@@ -110,8 +110,8 @@ func (d *Daily) sendSlackInitialMessageToUser(user model.User, previousReport *m
 		slack.MsgOptionAttachments(slack.Attachment{
 			CallbackID: SIDailyReportCallbackStart,
 			Color:      "#3AA3E3",
-			Footer: "В течении дня ты можешь изменить свой ответ",
-			Fields: previousReportFields,
+			Footer:     "В течение дня ты можешь изменить свой ответ",
+			Fields:     previousReportFields,
 			Actions: []slack.AttachmentAction{
 				actionButton,
 			},
@@ -125,6 +125,6 @@ func (d *Daily) sendSlackInitialMessageToUser(user model.User, previousReport *m
 	d.slack.SendMessage(
 		user.SlackId,
 		nil,
-		messageOptions...
+		messageOptions...,
 	)
 }
