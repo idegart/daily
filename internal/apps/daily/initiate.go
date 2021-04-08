@@ -89,7 +89,7 @@ func (d *Daily) sendSlackInitialMessageToUser(user model.User, previousReport *m
 	var messageOptions = []slack.MsgOption{}
 
 	if replace == nil {
-		messageOptions = append(messageOptions, slack.MsgOptionText("Расскажи чем ты занимался", false))
+		messageOptions = append(messageOptions, slack.MsgOptionText("Привет, расскажи чем ты занимался", false))
 	}
 
 	messageOptions = append(
