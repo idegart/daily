@@ -10,7 +10,7 @@ type Project struct {
 		Status       string
 		Type         string
 		SlackID      string `json:"Slack ID"`
-		SlackUsersID string `json:"DailyBot Summary"`
+		SlackUsersID []string `json:"DailyBot Summary"`
 	}
 }
 

@@ -46,7 +46,7 @@ func (p Project) GetSlackIds() []string {
 	var ids []string
 	var uniqueIds map[string]bool
 
-	s := strings.Split(p.Fields.SlackUsersID, ",")
+	s := strings.Split(p.Fields.SlackUsersID[0], ",")
 
 	uniqueIds = make(map[string]bool, len(s))
 
