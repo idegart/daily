@@ -13,7 +13,6 @@ import (
 	"os"
 )
 
-// https://daily-bot.proscom.tech/callback/interactive
 func init() {
 	if err := godotenv.Load(); err != nil {
 		log.Fatal(err)
